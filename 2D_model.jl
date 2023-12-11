@@ -50,10 +50,10 @@ let
     
         #DMI
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
-          os += 0.5*Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1
-         # os -= 0.5*Dhor[a]*epsilon(a,b,c), Sv[b], n + 1, Sv[c], n 
-          os += 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
-         # os -= 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n + L, Sv[c], n 
+            os += 0.5*Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1
+            os -= 0.5*Dhor[a]*epsilon(a,b,c), Sv[b], n + 1, Sv[c], n 
+            os += 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
+            os -= 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n + L, Sv[c], n
         end
 
       elseif i == L && j < L
@@ -64,8 +64,8 @@ let
       
         #DMI
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
-          os += 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
-         # os -= 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n + L, Sv[c], n  
+            os += 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
+            os -= 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n + L, Sv[c], n  
         end
 
       elseif i < L && j == L
