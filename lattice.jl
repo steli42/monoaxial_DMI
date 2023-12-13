@@ -1,9 +1,9 @@
-using NearestNeighbors, Statistics, PyPlot, ITensors
+using NearestNeighbors, Statistics, PyPlot, ITensors, Random
 pygui(true)
 
 function rectangular(Lx, Ly)
-    a1 = [1, 0]
-    a2 = [0, 1]
+    a1 = [1, sqrt(3)/2]
+    a2 = [0, sqrt(3)/2]
 
     lattice = zeros(2, Lx*Ly)
     ctr = 1
@@ -20,7 +20,7 @@ end
 
 let
     lattice_Q = rectangular(5, 5)
-    lattice_C = rectangular(1, 1)
+    lattice_C = rectangular(0, 0)
 
     idxs_QC = []
     for lQ in axes(lattice_Q, 2)
@@ -32,6 +32,7 @@ let
     end
     lattice_Q = lattice_Q[:, setdiff(1:size(lattice_Q,2),idxs_QC)]
     # @show lattice_Q[1,:], lattice_Q[2,:]
+    # lattice_Q = lattice_Q[:, shuffle(1:size(lattice_Q,2))]
 
 
     tree_Q = KDTree(lattice_Q, reorder=false)  # tree object for NearestNeighbors.jl
@@ -56,11 +57,15 @@ let
     ψ = randomMPS(sites, 64)
 
     Jx = 1.0
+    Jy = 1.0
+    Jz = 1.0
 
     ampo = OpSum()
     for idx in axes(lattice_Q, 2)
         for nn_idx in nn_idxs_QQ[idx]
             ampo += Jx, "Sx", idx, "Sx", nn_idx
+            ampo += Jy, "Sy", idx, "Sy", nn_idx
+            ampo += Jz, "Sz", idx, "Sz", nn_idx
         end
     end
     H = MPO(ampo, sites)
@@ -68,8 +73,12 @@ let
     E, ψ = dmrg(H, ψ, nsweeps=4)
 
     sx_expval = expect(ψ, "Sx")
+    plt.axes().set_aspect("equal")
     for idx in axes(lattice_Q, 2)
         plt.scatter(lattice_Q[1,idx], lattice_Q[2,idx], c=sx_expval[idx], vmin=-0.5, vmax=0.5)
+    end
+    for id in axes(lattice_Q, 2)
+        plt.text(lattice_Q[1,id], lattice_Q[2,id], "$id")
     end
     plt.show()
 end
