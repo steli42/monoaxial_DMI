@@ -14,7 +14,7 @@ end
 let
   π2 = pi/2 
 
-  nsweeps = 25
+  nsweeps = 25 
   maxdim = [25 for n=1:nsweeps]
   cutoff = 1E-10
 
@@ -50,10 +50,8 @@ let
     
         #DMI
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
-            os += 0.5*Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1
-            os -= 0.5*Dhor[a]*epsilon(a,b,c), Sv[b], n + 1, Sv[c], n 
-            os += 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
-            os -= 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n + L, Sv[c], n
+            os += Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1
+            os += Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
         end
 
       elseif i == L && j < L
@@ -64,8 +62,7 @@ let
       
         #DMI
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
-            os += 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
-            os -= 0.5*Dver[a]*epsilon(a,b,c), Sv[b], n + L, Sv[c], n  
+            os += Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L 
         end
 
       elseif i < L && j == L
@@ -76,8 +73,7 @@ let
       
         #DMI
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
-          os += 0.5*Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1
-         # os -= 0.5*Dhor[a]*epsilon(a,b,c), Sv[b], n + 1, Sv[c], n  
+          os += Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1  
         end
 
       end   
