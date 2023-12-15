@@ -50,7 +50,7 @@ let
     
         #DMI
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
-            os += Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1
+            os += Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1 
             os += Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
         end
 
