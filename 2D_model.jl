@@ -20,7 +20,7 @@ let
 
   α = 1.0
 
-  L = 5  
+  L = 15  
   N = L*L
   sites = siteinds("S=1/2",N)
 
@@ -135,8 +135,7 @@ let
   Magy = expect(psi01,"Sy")
   Magz = expect(psi01,"Sz")
 
-  f = open("magnetisation2D_1.csv", "w")
-
+  f = open("magnetisation2D.csv", "w")
   for(j,mz) in enumerate(Magz)
     @printf f "%f,"  (j-1.0) ÷ L
     @printf f "%f,"  (j-1.0) % L
@@ -151,33 +150,41 @@ let
   println("Final energy = $energy01")
 
   #####################################################################################
-  #=
-  energy02, psi02 = dmrg(H,[psi01],psi0; nsweeps, maxdim, cutoff)
   
-  Magx = expect(psi02,"Sx")
-  Magy = expect(psi02,"Sy")
-  Magz = expect(psi02,"Sz")
+  # energy02, psi02 = dmrg(H,[psi01],psi0; nsweeps, maxdim, cutoff)
+  
+  # Magx = expect(psi02,"Sx")
+  # Magy = expect(psi02,"Sy")
+  # Magz = expect(psi02,"Sz")
 
-  f = open("magnetisation2D_2.csv", "w")
+  # f = open("magnetisation2D_2.csv", "w")
 
-  for(j,mz) in enumerate(Magz)
-    @printf f "%f,"  (j-1.0) ÷ L
-    @printf f "%f,"  (j-1.0) % L
-    @printf f "%f,"  0.0
-    @printf f "%f,"  Magx[j]
-    @printf f "%f,"  Magy[j]
-    @printf f "%f,"  Magz[j]
-    @printf f "%f\n" sqrt(Magx[j]*Magx[j] + Magy[j]*Magy[j] + Magz[j]*Magz[j])
-  end  
-  close(f)
+  # for(j,mz) in enumerate(Magz)
+  #   @printf f "%f,"  (j-1.0) ÷ L
+  #   @printf f "%f,"  (j-1.0) % L
+  #   @printf f "%f,"  0.0
+  #   @printf f "%f,"  Magx[j]
+  #   @printf f "%f,"  Magy[j]
+  #   @printf f "%f,"  Magz[j]
+  #   @printf f "%f\n" sqrt(Magx[j]*Magx[j] + Magy[j]*Magy[j] + Magz[j]*Magz[j])
+  # end  
+  # close(f)
 
-  println("Final energy = $energy02")
+  # println("Final energy = $energy02")
 
-  delta = energy02 - energy01
+  # delta = energy02 - energy01
 
-  println("Energy difference = $delta")
+  # println("Energy difference = $delta")
 
-  @show inner(psi01,psi02)  =#
+  # @show inner(psi01,psi02)  
+
+  python_script_path = joinpath(@__DIR__, "plot2D.py")
+  if isfile(python_script_path)
+    # Run the Python script
+    run(`python $python_script_path`)
+  else
+    println("Error: Python script not found.")
+  end
 
   return
 end
