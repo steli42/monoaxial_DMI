@@ -15,7 +15,7 @@ function generate(N) #generates coordinates and assigned vectors
                Θ = 2 * atan(sinh(R/w)/sinh(r/w))
             end
             ϕ = m * angle((i - mid) + im*(j - mid)) + γ
-            #push!(coordinates, ((i, j)) #touples of coordinates as added one by one to the empty array (push! changes the array size on demand)
+            #push!(coor, ((i, j)) #touples of coordinates as added one by one to the empty array (push! changes the array size on demand)
             push!(coor_vec, ((i, j), [sin(Θ) * cos(ϕ), sin(Θ) * sin(ϕ), -cos(Θ)])) #a touple of coordinates are pushed along with a vector, the touple serves as label for the vector
         end
     end
@@ -41,7 +41,7 @@ function triangularize(coor_vec, N)
     return triangles
 end
 
-function TopoCharge_density(triangles)
+function TopoCharge(triangles)
 
     ρ = Float64[]
 
@@ -91,5 +91,5 @@ triangle_coordinates,triangle_vectors = triangles[3]
 # y component of the 3rd triangle vertex we can write triangle_coordinates[3][2].
 # println(triangle_coordinates[3][2])
 
-Q = TopoCharge_density(triangles)
+Q = TopoCharge(triangles)
 println(Q)
