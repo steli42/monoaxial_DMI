@@ -1,4 +1,17 @@
-using LinearAlgebra
+using LinearAlgebra, PyPlot
+
+# from spherical to cartesian coordinates
+function s2c(r, t, p)
+    return r.*[sin(t)*cos(p), sin(t)*sin(p), cos(t)]
+end
+
+# from cartesian to spherical coordinates
+function c2s(x, y, z)
+    r = norm([x, y, z])
+    t = atan(norm([x,y]), z)
+    p = atan(y, x)
+    return [r, t, p]
+end
 
 function generate(N) #generates coordinates and assigned vectors
     coor_vec = [] #is created as an empty array (has size 0) 
@@ -6,8 +19,8 @@ function generate(N) #generates coordinates and assigned vectors
         for j in 1:N
 
             # here we create a skyrmion vector field - lattice spins should form a skyrmion
-            R = 1.0; w = 0.4; m = 1.0; γ = pi
-            mid = div(N, 2) + 1  
+            R = 4.0; w = 0.6; m = 1; γ = pi
+            mid = div(N, 2) + 1
             r = sqrt((i - mid)^2 + (j - mid)^2)
             if r == 0
                Θ = pi
@@ -16,7 +29,7 @@ function generate(N) #generates coordinates and assigned vectors
             end
             ϕ = m * angle((i - mid) + im*(j - mid)) + γ
             #push!(coor, ((i, j)) #touples of coordinates as added one by one to the empty array (push! changes the array size on demand)
-            push!(coor_vec, ((i, j), [sin(Θ) * cos(ϕ), sin(Θ) * sin(ϕ), -cos(Θ)])) #a touple of coordinates are pushed along with a vector, the touple serves as label for the vector
+            push!(coor_vec, ((i, j), [sin(Θ) * cos(ϕ), -sin(Θ) * sin(ϕ), -cos(Θ)])) #a touple of coordinates are pushed along with a vector, the touple serves as label for the vector
         end
     end
     return coor_vec
@@ -70,8 +83,25 @@ function TopoCharge(triangles)
 end
 
 
-N = 27
+N = 15
 coor_vec = generate(N)
+
+pygui(true)
+fig = plt.figure()
+ax = fig.add_subplot(projection="3d")
+for xm in coor_vec
+    x, y, z = xm[1][1], xm[1][2], 0
+    u, v, w = xm[2]
+    # @show xm[2]
+    r, θ, ϕ = c2s(xm[2]...)
+    cmap = PyPlot.matplotlib.cm.get_cmap("hsv")
+    vmin = -π
+    vmax = π
+    norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+    ax.quiver(x, y, z, u, v, w, normalize=true, color=cmap(norm(ϕ)))
+end
+ax.set_aspect("equal")
+plt.show()
 
 #println(coor_vec) #gives all touples of coordinates together with assigned vectors
 
