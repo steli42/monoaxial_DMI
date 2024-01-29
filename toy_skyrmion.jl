@@ -46,11 +46,16 @@ function rotate_MPS!(mps, lattice)
     end
 end
 
+# flip x,y component
+function flip_XZ!(mps)
+    for i in eachindex(mps)
+        mps[i] = op("Sy", siteinds(mps, i))*mps[i]
+        noprime!(mps[i])
+    end
+end
+
 # just a plotting void
-function plot_spin(latt, spin)
-    pygui(true)
-    fig = plt.figure()
-    ax = fig.add_subplot(projection="3d")
+function plot_spin(latt, spin, ax)
     for id in axes(latt, 2)
         x, y, z = latt[:, id]
         u, v, w = spin[:, id]
@@ -62,7 +67,6 @@ function plot_spin(latt, spin)
         ax.quiver(x, y, z, u, v, w, normalize=true, color=cmap(norm(ϕ)))
     end
     ax.set_aspect("equal")
-    plt.show()
 end
 
 function main()
@@ -73,8 +77,18 @@ function main()
     ψ = normalize!(productMPS(sites, states)*1.0im)  # just to get rid of a stupid issue...
     rotate_MPS!(ψ, lattice_Q)
     sev = transpose(hcat(expect(ψ, ["Sx","Sy","Sz"])...))
+    sev2 = transpose(hcat(expect(conj.(ψ), ["Sx","Sy","Sz"])...))
+    flip_XZ!(ψ)
+    sev3 = transpose(hcat(expect(ψ, ["Sx","Sy","Sz"])...))
 
-    plot_spin(lattice_Q, sev)
+    fig = plt.figure(figsize=plt.figaspect(0.5))
+    ax = fig.add_subplot(1, 3, 1, projection="3d")
+    plot_spin(lattice_Q, sev, ax)
+    ax = fig.add_subplot(1, 3, 2, projection="3d")
+    plot_spin(lattice_Q, sev2, ax)
+    ax = fig.add_subplot(1, 3, 3, projection="3d")
+    plot_spin(lattice_Q, sev3, ax)
+    plt.show()
 end
 
 main();
