@@ -89,6 +89,7 @@ function main()
     sev2 = transpose(hcat(expect(conj.(ψ), ["Sx","Sy","Sz"])...))
     sev3 = transpose(hcat(expect(flip_XZ(ψ), ["Sx","Sy","Sz"])...))
 
+    pygui(true)
     fig = plt.figure(figsize=plt.figaspect(0.5))
     ax = fig.add_subplot(1, 3, 1, projection="3d")
     plot_spin(lattice_Q, sev, ax)
