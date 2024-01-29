@@ -101,7 +101,7 @@ function main()
     ax.set_title("WF with flipped x,z components")
     plt.show()
 
-    # conjugation is equivalent to S -> -S (time reversal) and flipping x & y
+    # conjugation is equivalent to S -> -S (time reversal) and flipping x & z
     @show all(abs.(sev2.+sev3).<1e-12)
 end
 
