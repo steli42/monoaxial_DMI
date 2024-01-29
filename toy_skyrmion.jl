@@ -92,11 +92,17 @@ function main()
     fig = plt.figure(figsize=plt.figaspect(0.5))
     ax = fig.add_subplot(1, 3, 1, projection="3d")
     plot_spin(lattice_Q, sev, ax)
+    ax.set_title("spin expectation value")
     ax = fig.add_subplot(1, 3, 2, projection="3d")
     plot_spin(lattice_Q, sev2, ax)
+    ax.set_title("complex conjugated WF")
     ax = fig.add_subplot(1, 3, 3, projection="3d")
     plot_spin(lattice_Q, sev3, ax)
+    ax.set_title("WF with flipped x,z components")
     plt.show()
+
+    # conjugation is equivalent to S -> -S (time reversal) and flipping x & y
+    @show all(abs.(sev2.+sev3).<1e-12)
 end
 
 main();
