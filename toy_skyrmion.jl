@@ -53,6 +53,14 @@ function flip_XZ!(mps)
         noprime!(mps[i])
     end
 end
+function flip_XZ(mps)
+    mps_out = deepcopy(mps)
+    for i in eachindex(mps_out)
+        mps_out[i] = op("Sy", siteinds(mps_out, i))*mps_out[i]
+        noprime!(mps_out[i])
+    end
+    return mps_out
+end
 
 # just a plotting void
 function plot_spin(latt, spin, ax)
@@ -76,10 +84,10 @@ function main()
     states = fill("Up", size(lattice_Q, 2))
     ψ = normalize!(productMPS(sites, states)*1.0im)  # just to get rid of a stupid issue...
     rotate_MPS!(ψ, lattice_Q)
+
     sev = transpose(hcat(expect(ψ, ["Sx","Sy","Sz"])...))
     sev2 = transpose(hcat(expect(conj.(ψ), ["Sx","Sy","Sz"])...))
-    flip_XZ!(ψ)
-    sev3 = transpose(hcat(expect(ψ, ["Sx","Sy","Sz"])...))
+    sev3 = transpose(hcat(expect(flip_XZ(ψ), ["Sx","Sy","Sz"])...))
 
     fig = plt.figure(figsize=plt.figaspect(0.5))
     ax = fig.add_subplot(1, 3, 1, projection="3d")
