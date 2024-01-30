@@ -46,6 +46,14 @@ function rotate_MPS!(mps, lattice)
     end
 end
 
+# swap the entries of two tensors in the MPS
+function swap!(mps, i, j)
+    ei = deepcopy(mps[i].tensor.storage)
+    ej = deepcopy(mps[j].tensor.storage)
+    mps[i].tensor.storage .= ej
+    mps[j].tensor.storage .= ei
+end
+
 # flip x,y component
 function flip_XZ!(mps)
     for i in eachindex(mps)
@@ -78,13 +86,21 @@ function plot_spin(latt, spin, ax)
 end
 
 function main()
-    lattice_Q = rectangular(11, 11)
+    lattice_Q = rectangular(1, 11)
 
     sites = siteinds("S=N/2", size(lattice_Q, 2), dim=2)
     states = fill("Up", size(lattice_Q, 2))
     ψ = normalize!(productMPS(sites, states)*1.0im)  # just to get rid of a stupid issue...
     rotate_MPS!(ψ, lattice_Q)
 
+    ψ0 = deepcopy(ψ)
+
+    swap!(ψ, 1, 6)
+    # swap!(ψ, 4, 6)
+    normalize!(ψ)
+    @show inner(ψ0, ψ)
+
+    sev0 = transpose(hcat(expect(ψ0, ["Sx","Sy","Sz"])...))
     sev = transpose(hcat(expect(ψ, ["Sx","Sy","Sz"])...))
     sev2 = transpose(hcat(expect(conj.(ψ), ["Sx","Sy","Sz"])...))
     sev3 = transpose(hcat(expect(flip_XZ(ψ), ["Sx","Sy","Sz"])...))
