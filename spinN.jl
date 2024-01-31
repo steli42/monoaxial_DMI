@@ -49,7 +49,9 @@ function generate_spin_matrices(;dim=2)
     Sp = Sx + 1im * Sy;
     Sm = Sx - 1im * Sy;
 
-    spin_matrices = Dict("Sx" => Sx, "Sy" => Sy, "Sz" => Sz, "S+" => Sp, "S-" => Sm, "Id" => Id)
+    acSx = acos(2.0.*Sx)
+    acSy = acos(2.0.*Sy)
+    spin_matrices = Dict("Sx" => Sx, "Sy" => Sy, "Sz" => Sz, "S+" => Sp, "S-" => Sm, "acSx" => acSx, "acSy" => acSy, "Id" => Id)
 
     # return spin matrices
     return spin_matrices
@@ -62,6 +64,8 @@ _op(::OpName"Sy", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["
 _op(::OpName"Sz", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["Sz"]
 _op(::OpName"S+", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["S+"]
 _op(::OpName"S-", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["S-"]
+_op(::OpName"acSx", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["acSx"]
+_op(::OpName"acSy", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["acSy"]
 
 function ITensors.op(on::OpName, st::SiteType"S=N/2", s::ITensors.Index)
     return itensor(_op(on, st; dim=dim(s)), s', dag(s))
