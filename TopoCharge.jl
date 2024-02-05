@@ -19,7 +19,7 @@ function generate(N) #generates coordinates and assigned vectors
         for j in 1:N
 
             # here we create a skyrmion vector field - lattice spins should form a skyrmion
-            R = 4.0; w = 0.6; m = 1; γ = pi
+            R = 5; w = 2.5; m = 1; γ = pi
             mid = div(N, 2) + 1
             r = sqrt((i - mid)^2 + (j - mid)^2)
             if r == 0
@@ -29,7 +29,7 @@ function generate(N) #generates coordinates and assigned vectors
             end
             ϕ = m * angle((i - mid) + im*(j - mid)) + γ
             #push!(coor, ((i, j)) #touples of coordinates as added one by one to the empty array (push! changes the array size on demand)
-            push!(coor_vec, ((i, j), [sin(Θ) * cos(ϕ), -sin(Θ) * sin(ϕ), -cos(Θ)])) #a touple of coordinates are pushed along with a vector, the touple serves as label for the vector
+            push!(coor_vec, ((i, j), [sin(Θ) * cos(ϕ), sin(Θ) * sin(ϕ), -cos(Θ)])) #a touple of coordinates are pushed along with a vector, the touple serves as label for the vector
         end
     end
     return coor_vec
@@ -83,7 +83,7 @@ function TopoCharge(triangles)
 end
 
 
-N = 15
+N = 25
 coor_vec = generate(N)
 
 pygui(true)
@@ -98,7 +98,7 @@ for xm in coor_vec
     vmin = -π
     vmax = π
     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
-    ax.quiver(x, y, z, u, v, w, normalize=true, color=cmap(norm(ϕ)))
+    ax.quiver(x, y, z, u, v, w, normalize=true, color=cmap(norm(θ)))
 end
 ax.set_aspect("equal")
 plt.show()
