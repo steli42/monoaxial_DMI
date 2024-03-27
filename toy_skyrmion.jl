@@ -1,5 +1,4 @@
-using AddPackage
-@add using ITensors, LinearAlgebra, Statistics, PyPlot
+using ITensors, LinearAlgebra, Statistics, PyPlot
 include("spinN.jl")
 
 # from spherical to cartesian coordinates
