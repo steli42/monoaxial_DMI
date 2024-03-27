@@ -5,16 +5,16 @@ include("functions.jl")
 
 let 
 
-    f = h5open("good_results_30/0_01_Mag2D_original.h5","r") #0.05
+    f = h5open("monoaxial_DMI/good_results_30/0_05_Mag2D_original.h5","r") #0.05
     ψ₁ = read(f,"Psi_1",MPS)
     close(f)
 
-    f = h5open("good_results_30/0_01_Mag2D_conjugated.h5","r") 
+    f = h5open("monoaxial_DMI/good_results_30/0_05_Mag2D_conjugated.h5","r") 
     ψ₂ = read(f,"Psi_2",MPS)
     close(f)
 
-    c₁ = 1/sqrt(2)
-    ϕ = 7*pi/4
+    c₁ = 1/sqrt(2)+0.1
+    ϕ = 0*pi/4
 
     Ψ = c₁ * exp(-im * ϕ) * ψ₁ + sqrt(1 - c₁^2) * ψ₂
     
@@ -25,7 +25,7 @@ let
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
 
-    f = open("magnetisation.csv", "w")
+    f = open("monoaxial_DMI/magnetisation.csv", "w")
     for (j,mz) in enumerate(Mz)
         L = sqrt(length(Mz))
         t = Mx

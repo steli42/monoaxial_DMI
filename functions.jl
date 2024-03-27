@@ -197,57 +197,57 @@ end
 
 ###### OTHER #############################################
 
-function calculate_TopoCharge_FromCSV(filename::String) 
+# function calculate_TopoCharge_FromCSV(filename::String) 
     
-  df = CSV.read(filename, DataFrame, header = false)
-  N = round(Int, sqrt(nrow(df)))
+#   df = CSV.read(filename, DataFrame, header = false)
+#   N = round(Int, sqrt(nrow(df)))
 
-  coor_vec = []  
-  triangles = []
-  ρ = Float64[]
+#   coor_vec = []  
+#   triangles = []
+#   ρ = Float64[]
   
-  for row in eachrow(df)
-      x, y = row[1], row[2]
-      Mx, My, Mz = row[4], row[5], row[6]
-      M_norm = row[7]
-      M = [Mx, My, Mz]/M_norm
-      push!(coor_vec, ((x, y), M)) 
-  end
+#   for row in eachrow(df)
+#       x, y = row[1], row[2]
+#       Mx, My, Mz = row[4], row[5], row[6]
+#       M_norm = row[7]
+#       M = [Mx, My, Mz]/M_norm
+#       push!(coor_vec, ((x, y), M)) 
+#   end
 
-  for i in 1:N-1, j in 1:N-1
-      p1, v1 = coor_vec[(i-1)*N + j]
-      p2, v2 = coor_vec[(i-1)*N + j+1]
-      p3, v3 = coor_vec[i*N + j+1]
+#   for i in 1:N-1, j in 1:N-1
+#       p1, v1 = coor_vec[(i-1)*N + j]
+#       p2, v2 = coor_vec[(i-1)*N + j+1]
+#       p3, v3 = coor_vec[i*N + j+1]
           
-      push!(triangles, ((p1, p2, p3),(v1, v2, v3)))  
+#       push!(triangles, ((p1, p2, p3),(v1, v2, v3)))  
           
-      p4, v4 = coor_vec[i*N + j]
-      push!(triangles, ((p1, p3, p4),(v1, v3, v4)))
-  end
+#       p4, v4 = coor_vec[i*N + j]
+#       push!(triangles, ((p1, p3, p4),(v1, v3, v4)))
+#   end
 
-  for (coordinates, vectors) in triangles 
-      V1, V2, V3 = vectors  
-      L1, L2, L3 = coordinates 
+#   for (coordinates, vectors) in triangles 
+#       V1, V2, V3 = vectors  
+#       L1, L2, L3 = coordinates 
 
-      Latt1x, Latt1y = L1
-      Latt2x, Latt2y = L2
-      Latt3x, Latt3y = L3
+#       Latt1x, Latt1y = L1
+#       Latt2x, Latt2y = L2
+#       Latt3x, Latt3y = L3
 
-      Latt1 = [Latt2x - Latt1x, Latt2y - Latt1y]
-      Latt2 = [Latt3x - Latt2x, Latt3y - Latt2y]
-      S = sign(Latt1[2] * Latt2[1] - Latt1[1] * Latt2[2])
+#       Latt1 = [Latt2x - Latt1x, Latt2y - Latt1y]
+#       Latt2 = [Latt3x - Latt2x, Latt3y - Latt2y]
+#       S = sign(Latt1[2] * Latt2[1] - Latt1[1] * Latt2[2])
 
-      X = 1.0 + dot(V1, V2) + dot(V2, V3) + dot(V3, V1)
-      Y = dot(V1, cross(V2, V3))
+#       X = 1.0 + dot(V1, V2) + dot(V2, V3) + dot(V3, V1)
+#       Y = dot(V1, cross(V2, V3))
 
-      A = 2 * S * angle(X + im*Y)
+#       A = 2 * S * angle(X + im*Y)
 
-      push!(ρ, A)
-  end
+#       push!(ρ, A)
+#   end
   
-  Q = sum(ρ)/(4*pi)
-  return Q
-end
+#   Q = sum(ρ)/(4*pi)
+#   return Q
+# end
 
 function calculate_TopoCharge_FromMag(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}) 
     
