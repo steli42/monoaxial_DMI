@@ -13,10 +13,10 @@ let
     ψ₂ = read(f,"Psi_2",MPS)
     close(f)
 
-    c₁ = 1/sqrt(2)
+    c₁ = 1/sqrt(2) + 0.1 
 
-    for i in 0:1:7
-        ϕ = i*pi/4 - 0.01
+    for i in 0:1:0
+        ϕ = i*pi/4 
 
         Ψ = c₁ * exp(-im * ϕ) * ψ₁ + sqrt(1 - c₁^2) * ψ₂
         
@@ -24,31 +24,31 @@ let
         My = expect(Ψ,"Sy")
         Mz = expect(Ψ,"Sz")
 
-        # fig = plt.figure()
-        # ax = fig.add_subplot(projection="3d")
+        fig = plt.figure()
+        ax = fig.add_subplot(projection="3d")
 
-        # f = open("monoaxial_DMI/magnetisation.csv", "w")
-        # for (j,mz) in enumerate(Mz)
-        #     L = sqrt(length(Mz))
-        #     t = My
-        #     x, y, z = (j-1.0) ÷ L , (j-1.0) % L , 0.0
-        #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
-        #     vmin = minimum(t)
-        #     vmax = maximum(t)
-        #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
-        #     ax.quiver(x, y, z, Mx[j], My[j], Mz[j], normalize=true, color=cmap(norm(t[j])))
+        f = open("monoaxial_DMI/magnetisation.csv", "w")
+        for (j,mz) in enumerate(Mz)
+            L = sqrt(length(Mz))
+            t = Mz
+            x, y, z = (j-1.0) ÷ L , (j-1.0) % L , 0.0
+            cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
+            vmin = minimum(t)
+            vmax = maximum(t)
+            norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+            ax.quiver(x, y, z, Mx[j], My[j], Mz[j], normalize=true, color=cmap(norm(t[j])))
 
-        #     @printf f "%f,"  x
-        #     @printf f "%f,"  y
-        #     @printf f "%f,"  0.0
-        #     @printf f "%f,"  Mx[j]
-        #     @printf f "%f,"  My[j]
-        #     @printf f "%f,"  Mz[j]
-        #     @printf f "%f\n" sqrt(Mx[j]^2 + My[j]^2 + Mz[j]^2)
-        # end
-        # ax.set_aspect("equal")
-        # plt.show()
-        # close(f)
+            @printf f "%f,"  x
+            @printf f "%f,"  y
+            @printf f "%f,"  0.0
+            @printf f "%f,"  Mx[j]
+            @printf f "%f,"  My[j]
+            @printf f "%f,"  Mz[j]
+            @printf f "%f\n" sqrt(Mx[j]^2 + My[j]^2 + Mz[j]^2)
+        end
+        ax.set_aspect("equal")
+        plt.show()
+        close(f)
 
         Q = calculate_TopoCharge_FromMag(Mx, My, Mz)
         println("step:$i, topo charge:$Q")
