@@ -25,6 +25,7 @@ let
   J = -1.0 
   D = 2*pi/L
   Bcr = 0.5*D*D
+  Bpin = 0.5
 
   Energies = []
 
@@ -40,7 +41,7 @@ let
 
   for α in α_values_pos
 
-    H = build_Hamiltonian(sites, D, Bcr, J, α, L)
+    H = build_Hamiltonian(sites, D, Bpin, Bcr, J, α, L)
     
     E₁, ψ₁ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
 
@@ -117,7 +118,7 @@ let
 
   for α in α_values_neg
 
-    H = build_Hamiltonian(sites, D, Bcr, J, α, L)
+    H = build_Hamiltonian(sites, D, Bpin, Bcr, J, α, L)
     
     E₁, ψ₁ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
 
