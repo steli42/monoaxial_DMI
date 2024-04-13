@@ -1,4 +1,5 @@
-using ITensors, LinearAlgebra, DataFrames, CSV
+using ITensors, LinearAlgebra 
+#using DataFrames, CSV
 
 ##### ALGEBRAIC FUNCTIONS ###############################
 

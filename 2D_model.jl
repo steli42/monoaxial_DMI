@@ -8,13 +8,13 @@ let
   Δ = 0.1
   L = 15 
 
-  α_range₁ = 1.0:-Δ:0.1
-  α_range₂ = 0.1:-δ:0.0
+  α_range₁ = 1.0:-Δ:0.2
+  α_range₂ = 0.2:-δ:0.0
   α_values_pos = unique(collect(Iterators.flatten((α_range₁,α_range₂))))
   α_values_neg = sort(map(x -> -x, α_values_pos))
 
   nsweeps = 100
-  maxdim = [25 for n=1:nsweeps]
+  maxdim = [30 for n=1:nsweeps]
   cutoff = 1E-10
   isAdiabatic = true
   loadPsi = false #true loads a chosen .h5 file (the name of the file needs to be specified in functions.jl -- Change that later its really annoying )
