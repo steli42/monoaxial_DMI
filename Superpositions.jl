@@ -5,15 +5,15 @@ include("functions.jl")
 
 let 
 
-    f = h5open("monoaxial_DMI/good_results_30/0_05_Mag2D_original.h5","r") #0.05
+    f = h5open("low_Bpin/0_18_Mag2D_original.h5","r") #0.05
     ψ₁ = read(f,"Psi_1",MPS)
     close(f)
 
-    f = h5open("monoaxial_DMI/good_results_30/0_05_Mag2D_conjugated.h5","r") 
+    f = h5open("low_Bpin/0_18_Mag2D_conjugated.h5","r") 
     ψ₂ = read(f,"Psi_2",MPS)
     close(f)
 
-    c₁ = 1/sqrt(2) + 0.1 
+    c₁ = 1.0#1/sqrt(2) + 0.1 
 
     for i in 0:1:0
         ϕ = i*pi/4 
@@ -27,7 +27,7 @@ let
         fig = plt.figure()
         ax = fig.add_subplot(projection="3d")
 
-        f = open("monoaxial_DMI/magnetisation.csv", "w")
+        f = open("magnetisation.csv", "w")
         for (j,mz) in enumerate(Mz)
             L = sqrt(length(Mz))
             t = Mz
@@ -37,6 +37,8 @@ let
             vmax = maximum(t)
             norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
             ax.quiver(x, y, z, Mx[j], My[j], Mz[j], normalize=true, color=cmap(norm(t[j])))
+            plt.xlabel("x")
+            plt.ylabel("y")
 
             @printf f "%f,"  x
             @printf f "%f,"  y
@@ -52,5 +54,6 @@ let
 
         Q = calculate_TopoCharge_FromMag(Mx, My, Mz)
         println("step:$i, topo charge:$Q")
+        @show(norm(inner(ψ₁,ψ₂)))
     end
 end

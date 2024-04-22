@@ -17,7 +17,7 @@ let
   maxdim = [30 for n=1:nsweeps]
   cutoff = 1E-10
   isAdiabatic = true
-  loadPsi = false #true loads a chosen .h5 file (the name of the file needs to be specified in functions.jl -- Change that later its really annoying )
+  loadPsi = false #true loads a chosen .h5 file (relative path needed)
 
   # set a DMRGObserver that stops the sweeping after a certain condition has been met (in this case ΔE < ε)
   obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
@@ -25,7 +25,7 @@ let
   J = -1.0 
   D = 2*pi/L
   Bcr = 0.5*D*D
-  Bpin = 0.5
+  Bpin = 1.5
 
   Energies = []
 
@@ -37,7 +37,7 @@ let
   isdir(original_dir) || mkdir(original_dir)
   isdir(conjugated_dir) || mkdir(conjugated_dir)
 
-  sites, ψ₀ = get_Initial_Psi(L,"skyrmion",loadPsi) 
+  sites, ψ₀ = get_Initial_Psi(L,"skyrmion",loadPsi,"0_0_Mag2D_original.h5") 
 
   for α in α_values_pos
 
@@ -114,7 +114,7 @@ let
     
   end
 
-  sites, ψ₀ = get_Initial_Psi(L,"antiskyrmion",loadPsi)
+  sites, ψ₀ = get_Initial_Psi(L,"antiskyrmion",loadPsi,"0_0_Mag2D_original.h5")
 
   for α in α_values_neg
 
@@ -201,11 +201,6 @@ let
   # Magx03 = expect(psi01,"Sx")
   # Magy03 = expect(psi01,"Sy")
   # Magz03 = expect(psi01,"Sz")
-
-  #####################################################################################
-  # here we calculate the second excited state
-
-  # energy_exc, psi_exc = dmrg(H,[ψ₁],ψ₀; nsweeps, maxdim, cutoff) 
 
   #####################################################################################
 

@@ -49,10 +49,10 @@ function rotate_MPS(ψ::MPS, L::Int64) # rotates a uniform state into a skyrmion
 
 end 
 
-function get_Initial_Psi(L::Int64, state_type::String, loadPsi::Bool)
+function get_Initial_Psi(L::Int64, state_type::String, loadPsi::Bool, filepath::String)
 
   if loadPsi
-    f = h5open("good_results_30/0_0_Mag2D_original.h5","r") #we load a bubble state
+    f = h5open(filepath,"r") #we load a chosen state
     ψ₀ = read(f,"Psi_1",MPS)
     close(f)
     sites = siteinds(ψ₀) 
