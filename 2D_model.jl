@@ -26,6 +26,7 @@ let
   D = 2*pi/L
   Bcr = 0.5*D*D
   Bpin = 1.5
+  @show(Bpin)
 
   Energies = []
 
