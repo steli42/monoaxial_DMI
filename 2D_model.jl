@@ -14,7 +14,7 @@ let
   α_values_neg = sort(map(x -> -x, α_values_pos))
 
   nsweeps = 100
-  maxdim = [30 for n=1:nsweeps]
+  maxdim = [1 for n=1:nsweeps]
   cutoff = 1E-10
   isAdiabatic = true
   loadPsi = false #true loads a chosen .h5 file (relative path needed)
@@ -101,7 +101,7 @@ let
     println("For alpha = $α: Final energy of psi conjugated = $E₂")
     println("For alpha = $α: Final energy variance of psi conjugated = $σ₂")
 
-    if abs(α) <= 0.2
+    if abs(α) <= 1.0
       psi_file = h5open("$(formatted_alpha)_Mag2D_original.h5","w")
       write(psi_file,"Psi_1",ψ₁)
       close(psi_file)
