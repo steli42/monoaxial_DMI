@@ -1,0 +1,13 @@
+observations: 
+
+for a small system like 7x7, we can stabilise a skyrmion for alpha = 1
+
+for alpha cca <=0.5, the skyrmion and antiskyrmion states have non-trivial overlap and at alpha = 0 they 
+become the same state with overlap =1, as is expected for the plateau
+
+Actually, when looking at them, for alpha <= 0.5, they dont resemble skyrmions at all anymore!!
+
+this is not the case for systems which are larger like 15x15 where skyrmions stay being skyrmions but we get the plateaus 
+
+the plateau is more and more prominent with increasing L, for a 7x7 it is invisible basically...
+but we can still notice that the states look like they belong to a plateau
