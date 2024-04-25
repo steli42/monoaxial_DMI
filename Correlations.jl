@@ -1,4 +1,4 @@
-using ITensors, Printf, PyPlot, ITensors.HDF5
+using ITensors, Printf, PyPlot, HDF5
 include("functions.jl")
 
 let 

@@ -1,15 +1,15 @@
-using ITensors, Printf, PyPlot, ITensors.HDF5
+using ITensors, Printf, PyPlot, HDF5
 pygui(true)
 include("functions.jl")
 
 
 let 
 
-    f = h5open("0_2_Mag2D_original.h5","r") 
+    f = h5open("1_0_Mag2D_original.h5","r") 
     ψ₁ = read(f,"Psi_1",MPS)
     close(f)
 
-    f = h5open("0_2_Mag2D_conjugated.h5","r") 
+    f = h5open("1_0_Mag2D_conjugated.h5","r") 
     ψ₂ = read(f,"Psi_2",MPS)
     close(f)
 
