@@ -70,7 +70,9 @@ let
     end
     H = MPO(ampo, sites)
 
-    E, ψ = dmrg(H, ψ, nsweeps=4)
+    nsweeps = 4
+    maxdim = [50 for n=1:nsweeps]
+    E, ψ = dmrg(H, ψ; nsweeps, maxdim)
 
     sx_expval = expect(ψ, "Sx")
     plt.axes().set_aspect("equal")
