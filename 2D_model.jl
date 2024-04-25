@@ -6,7 +6,7 @@ let
 
   δ = 0.02
   Δ = 0.1
-  L = 15 
+  L = 5 
 
   α_range₁ = 1.0:-Δ:0.2
   α_range₂ = 0.2:-δ:0.0
@@ -14,7 +14,7 @@ let
   α_values_neg = sort(map(x -> -x, α_values_pos))
 
   nsweeps = 100
-  maxdim = [1 for n=1:nsweeps]
+  maxdim = [30 for n=1:nsweeps]
   cutoff = 1E-10
   isAdiabatic = true
   loadPsi = false #true loads a chosen .h5 file (relative path needed)
@@ -23,10 +23,9 @@ let
   obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
 
   J = -1.0 
-  D = 2*pi/L
-  Bcr = 0.5*D*D
+  D = 4*pi/L #2*pi/L 2x stronger if we want to have a skyrmion in a tiny 5x5 flake
+  Bcr = 0.5*D*D/2 #0.5*D*D 2x weaker since D/Bcr should stay the same if we want the same results
   Bpin = 1.5
-  @show(Bpin)
 
   Energies = []
 
