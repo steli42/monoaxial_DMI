@@ -26,9 +26,10 @@ let
         ψ₂ = read(f,"Psi_2",MPS)
         close(f)
         
-        @show(norm(inner(ψ₁',ψ₂))) #may need priming to stick to the other psi
+        in = norm(inner(ψ₁',ψ₂))
+        @show(in) #first psi may need priming to stick to the other psi
 
-        norm_val = norm(inner(ψ₁', ψ₂))  
+        norm_val = in  
         push!(alphas, α)                 
         push!(norms, norm_val)  
 
