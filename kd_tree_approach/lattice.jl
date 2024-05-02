@@ -1,6 +1,5 @@
 using NearestNeighbors, Statistics, PyPlot, ITensors, Random, LinearAlgebra, SparseArrays
 pygui(true)
-include("/Users/stefan.liscak/Documents/monoaxial_DMI/functions.jl")
 
 function build_lattice(Lx::Int64, Ly::Int64, geometry::String)  # construct lattice sites 
     if geometry == "rectangular"
@@ -115,6 +114,54 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
     H = MPO(ampo, sites)
     return H
 end   
+
+function calculate_TopoCharge_FromMag(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}, lattice_Q::Array{Float64,2}) 
+    
+    N = size(lattice_Q,2)
+  
+    coor_vec = Tuple{Tuple{Float64, Float64}, Vector{Float64}}[]  
+    triangles = Tuple{Tuple{Tuple{Float64, Float64}, Tuple{Float64, Float64}, Tuple{Float64, Float64}}, Tuple{Vector{Float64}, Vector{Float64}, Vector{Float64}}}[]
+    ρ = Float64[]
+    
+    for idx in axes(lattice_Q,2)
+      M_norm = sqrt(Mx[idx]^2 + My[idx]^2 + Mz[idx]^2)
+      push!(coor_vec, ((lattice_Q[1,idx] , lattice_Q[2,idx]), [Mx[idx], My[idx], Mz[idx]]/M_norm)) 
+    end
+  
+    # for i in 1:N-1, j in 1:N-1
+    #   p1, v1 = coor_vec[(i-1)*N + j]
+    #   p2, v2 = coor_vec[(i-1)*N + j+1]
+    #   p3, v3 = coor_vec[i*N + j+1]
+            
+    #   push!(triangles, ((p1, p2, p3),(v1, v2, v3)))  
+            
+    #   p4, v4 = coor_vec[i*N + j]
+    #   push!(triangles, ((p1, p3, p4),(v1, v3, v4)))
+    # end
+  
+    # for (coordinates, vectors) in triangles 
+    #   V1, V2, V3 = vectors  
+    #   L1, L2, L3 = coordinates 
+  
+    #   Latt1x, Latt1y = L1
+    #   Latt2x, Latt2y = L2
+    #   Latt3x, Latt3y = L3
+  
+    #   Latt1 = [Latt2x - Latt1x, Latt2y - Latt1y]
+    #   Latt2 = [Latt3x - Latt2x, Latt3y - Latt2y]
+    #   S = sign(Latt1[2] * Latt2[1] - Latt1[1] * Latt2[2])
+  
+    #   X = 1.0 + dot(V1, V2) + dot(V2, V3) + dot(V3, V1)
+    #   Y = dot(V1, cross(V2, V3))
+  
+    #   A = 2 * S * angle(X + im*Y)
+  
+    #   push!(ρ, A)
+    # end
+    
+    # Q = sum(ρ)/(4*pi)
+    # return Q
+end
 
 #notes: why is the skyrmion always shifted along the [1,-1]-direction?
 # how can I get the bloch skyrmion instead of the neel skyrmion?
