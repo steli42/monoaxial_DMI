@@ -114,7 +114,6 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
             r_ij_3D = vcat(r_ij, 0) 
             D_vector = D * r_ij_3D
             
-            
             for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
                 ampo += 0.5*D_vector[a]*epsilon(a,b,c)*e_z[c], Sv[b], nn_idx
             end
@@ -125,112 +124,87 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
     return H
 end   
 
-function calculate_TopoCharge(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}, lattice_Q::Array{Float64,2})
+function insert_magnetization!(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}, 
+        index::Int64, mag_vector::Vector{Float64}) # insert the magnetization vector at the specified index
+    insert!(Mx, index, mag_vector[1])
+    insert!(My, index, mag_vector[2])
+    insert!(Mz, index, mag_vector[3])
+end
 
-    a1 = [1.0, 0.0]
-    a2 = [0.0, 1.0]
-    range = norm(a1 .+ a2)
-
-    tree_Q = KDTree(lattice_Q, reorder=false)  
-    onsite_idxs = inrange(tree_Q, tree_Q.data, 0.01) 
-    nn_idxs = inrange(tree_Q, tree_Q.data, range) 
-    nn_idxs_QQ = setdiff.(nn_idxs, onsite_idxs) 
+function calculate_TopoCharge(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}, 
+        lattice_QH::Array{Float64,2}, Lx::Int64, Ly::Int64)
   
     coor_vec = Tuple{Tuple{Float64, Float64}, Vector{Float64}}[]  
-    triangles = Tuple{Tuple{Tuple{Float64, Float64}, Tuple{Float64, Float64}, Tuple{Float64, Float64}}, Tuple{Vector{Float64}, Vector{Float64}, Vector{Float64}}}[]
+    triangles = Tuple{Tuple{Tuple{Float64, Float64}, Tuple{Float64, Float64}, Tuple{Float64, Float64}}, 
+    Tuple{Vector{Float64}, Vector{Float64}, Vector{Float64}}}[]
     ρ = Float64[]
     
-    for idx in axes(lattice_Q,2)
-        x, y = lattice_Q[1,idx], lattice_Q[2,idx]
-        M_norm = sqrt(Mx[idx]^2 + My[idx]^2 + Mz[idx]^2)
-        M = [Mx[idx], My[idx], Mz[idx]]/M_norm
-        push!(coor_vec, ((x, y), M)) 
-    end
-
-    # Generate triangles and calculate topological charge
-    for idx in 1:axes(lattice_Q, 2)
-        if length(nn_idxs_QQ[idx]) >= 2
-            # Sort or choose neighbors deterministically, if needed
-            # For simple grids, neighbors can typically be taken directly
-            for combo in combinations(nn_idxs_QQ[idx], 2)
-                n1, n2 = combo
-                # Form and calculate triangle idx, n1, n2
-                V1 = [Mx[idx], My[idx], Mz[idx]]
-                V2 = [Mx[n1], My[n1], Mz[n1]]
-                V3 = [Mx[n2], My[n2], Mz[n2]]
-                X = 1.0 + dot(V1, V2) + dot(V2, V3) + dot(V3, V1)
-                Y = dot(V1, cross(V2, V3))
-                A = 2 * atan(Y, X)
-                push!(ρ, A)
-            end
-        end
+    for k in axes(lattice_QH,2)
+        x, y = lattice_QH[1,k], lattice_QH[2,k]
+        M_norm = sqrt(Mx[k]^2 + My[k]^2 + Mz[k]^2)
+        M = [Mx[k], My[k], Mz[k]]/M_norm
+        push!(coor_vec, ((x, y), M))
     end
   
-    # for i in 1:N-1, j in 1:N-1
-    #     idx1 = (i-1)*N + j
-    #     idx2 = (i-1)*N + j + 1
-    #     idx3 = i*N + j + 1
-    #     idx4 = i*N + j
+    for i in 1:Lx-1, j in 1:Ly-1    
+        p1, v1 = coor_vec[(i-1)*Ly + j]
+        p2, v2 = coor_vec[(i-1)*Ly + j + 1]
+        p3, v3 = coor_vec[i*Ly + j + 1]
+        p4, v4 = coor_vec[i*Ly + j]
 
-    #     p1, v1 = coor_vec[idx1]
-    #     p2, v2 = coor_vec[idx2]
-    #     p3, v3 = coor_vec[idx3]
-    #     p4, v4 = coor_vec[idx4]
+        push!(triangles, ((p1, p2, p3),(v1, v2, v3)))
+        push!(triangles, ((p1, p3, p4),(v1, v3, v4)))    
+    end   
 
-    #     push!(triangles, ((p1, p2, p3),(v1, v2, v3)))
-    #     push!(triangles, ((p1, p3, p4),(v1, v3, v4)))    
-    # end   
-
-    # for (coordinates, vectors) in triangles 
-    #   V1, V2, V3 = vectors  
-    #   L1, L2, L3 = coordinates 
+    for (coordinates, vectors) in triangles 
+      V1, V2, V3 = vectors  
+      L1, L2, L3 = coordinates 
   
-    #   Latt1x, Latt1y = L1
-    #   Latt2x, Latt2y = L2
-    #   Latt3x, Latt3y = L3
+      Latt1x, Latt1y = L1
+      Latt2x, Latt2y = L2
+      Latt3x, Latt3y = L3
   
-    #   Latt1 = [Latt2x - Latt1x, Latt2y - Latt1y]
-    #   Latt2 = [Latt3x - Latt2x, Latt3y - Latt2y]
-    #   S = sign(Latt1[2] * Latt2[1] - Latt1[1] * Latt2[2])
+      Latt1 = [Latt2x - Latt1x, Latt2y - Latt1y]
+      Latt2 = [Latt3x - Latt2x, Latt3y - Latt2y]
+      S = sign(Latt1[1] * Latt2[2] - Latt1[2] * Latt2[1])
   
-    #   X = 1.0 + dot(V1, V2) + dot(V2, V3) + dot(V3, V1)
-    #   Y = dot(V1, cross(V2, V3))
+      X = 1.0 + dot(V1, V2) + dot(V2, V3) + dot(V3, V1)
+      Y = dot(V1, cross(V2, V3))
   
-    #   A = 2 * S * angle(X + im*Y)
+      A = 2 * S * angle(X + im*Y)
   
-    #   push!(ρ, A)
-    # end
+      push!(ρ, A)
+    end
     
-    # Q = sum(ρ)/(4*pi)
-    # return Q
+    Q = sum(ρ)/(4*pi)
+    return Q
 end
 
 let
 
-    nsweeps = 100
-    maxdim = [30 for n = 1:nsweeps]
+    nsweeps = 20
+    maxdim = [20 for n = 1:nsweeps]
     cutoff = 1e-10
     obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
     
-    Lx = 11
-    Ly = 11
+    Lx, Ly = 15, 15
     J = -1.0
-    D = 2*π/sqrt(Lx*Ly)
+    D = π/sqrt(Lx*Ly)
     Bcr = 0.5*D^2
 
     # construct quantum and classical lattice sites
-    geom = "rectangular"
-    lattice_Q = build_lattice(Lx, Ly, geom)
+    geom = "rectangular"  #at this point triangular does not work
+    lattice_QH = build_lattice(Lx, Ly, geom)
     lattice_C = build_lattice(Lx+2, Ly+2, geom)
 
     idxs_QC = []
     idxs_QH = []
-    for lQ in axes(lattice_Q, 2)
-        if lattice_Q[:,lQ] == [0.0, 0.0]
+    for lQ in axes(lattice_QH, 2)
+        if lattice_QH[:,lQ] == [0.0, 0.0]
             push!(idxs_QH, lQ)
         end
     end
-    lattice_Q = lattice_Q[:, setdiff(1:size(lattice_Q,2),idxs_QH)]
+    lattice_Q = lattice_QH[:, setdiff(1:size(lattice_QH,2),idxs_QH)]
     for lC in axes(lattice_C, 2)
         for lQ in axes(lattice_Q, 2)
             if lattice_C[:, lC] == lattice_Q[:, lQ] 
@@ -259,41 +233,40 @@ let
     # end
     # plt.show()
 
-    # ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
+    ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
 
-    # H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D)
+    H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D)
 
-    # E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
+    E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
 
-    # sx_expval = expect(ψ, "Sx")
-    # sy_expval = expect(ψ, "Sy")
-    # sz_expval = expect(ψ, "Sz")
-    # #splus_expval = abs.(sx_expval + im * sy_expval)
+    sx_expval = expect(ψ, "Sx")
+    sy_expval = expect(ψ, "Sy")
+    sz_expval = expect(ψ, "Sz")
 
-    # fig = plt.figure()
-    # ax = fig.add_subplot(projection = "3d")
+    origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
+    if origin_index !== nothing
+        insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5])
+    end
+
+    fig = plt.figure()
+    ax = fig.add_subplot(projection = "3d")
     
-    # for idx in axes(lattice_Q,2)
-    #     t = sz_expval
-    #     x, y, z = lattice_Q[1,idx],lattice_Q[2,idx], 0.0
-    #     vmin = minimum(t)
-    #     vmax = maximum(t)
-    #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
-    #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
-    #     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
-    #     plt.xlabel("x")
-    #     plt.ylabel("y")
-    # end
-    # ax.set_aspect("equal")
-    # plt.show()
+    for idx in axes(lattice_QH,2)
+        t = sz_expval
+        x, y, z = lattice_QH[1,idx],lattice_QH[2,idx], 0.0
+        vmin = minimum(t)
+        vmax = maximum(t)
+        cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
+        norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
+        ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
+        plt.xlabel("x")
+        plt.ylabel("y")
+    end
+    ax.set_aspect("equal")
+    plt.show()
 
-    # for idx in axes(lattice_Q, 2)
-    #     plt.scatter(lattice_Q[1,idx], lattice_Q[2,idx], c=sz_expval[idx], vmin=-0.5, vmax=0.5)
-    # end
-    # for id in axes(lattice_Q, 2)
-    #     plt.text(lattice_Q[1,id], lattice_Q[2,id], "$id")
-    # end
-    # plt.show()
+    Q = calculate_TopoCharge(sx_expval, sy_expval, sz_expval, lattice_QH, Lx, Ly)
+    @show Q
 
     # ITensors.disable_warn_order()
     # full_H = 1.0
