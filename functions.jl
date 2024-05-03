@@ -100,7 +100,7 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
           os += J, s, n, s, n + L #vertical couplings
         end
     
-        #DMI
+        #DMI -- to turn Bloch to Neel just swap Dhor and Dver
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
           os += Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1
           os += Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
@@ -112,7 +112,7 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
           os += J, s, n, s, n + L 
         end
       
-        #DMI
+        #DMI -- to turn Bloch to Neel just swap Dhor and Dver
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
           os += Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L 
         end
@@ -123,7 +123,7 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
           os += J, s, n, s, n + 1 
         end
       
-        #DMI
+        #DMI -- to turn Bloch to Neel just swap Dhor and Dver
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
           os += Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1 
         end

@@ -6,15 +6,15 @@ let
 
   δ = 0.02
   Δ = 0.1
-  L = 15 
+  L = 11 
 
   α_range₁ = 1.0:-Δ:0.2
   α_range₂ = 0.2:-δ:0.0
   α_values_pos = unique(collect(Iterators.flatten((α_range₁,α_range₂))))
   α_values_neg = sort(map(x -> -x, α_values_pos))
 
-  nsweeps = 100
-  maxdim = [30 for n=1:nsweeps]
+  nsweeps = 20
+  maxdim = [20 for n=1:nsweeps]
   cutoff = 1E-10
   isAdiabatic = true
   loadPsi = false #true loads a chosen .h5 file (relative path needed)

@@ -68,27 +68,31 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
             ampo += B[a], Sv[a], idx
         end 
     
-        for nn_idx in nn_idxs_QQ[idx]
+        for nn_idx in nn_idxs_QQ[idx] # must have factor 1/2 to account for double-counting bonds 
 
             # Heisenberg interaction 
             for s in Sv
-                ampo += J, s, idx, s, nn_idx
+                ampo += 0.5*J, s, idx, s, nn_idx
             end
             
-            # construct DMI vector
-            r_ij = lattice_Q[:, idx] - lattice_Q[:, nn_idx] #relative position of two neighbors
+            # construct DMI vector -- for Neel
+            # r_ij = lattice_Q[:, idx] - lattice_Q[:, nn_idx] 
+            # r_ij_3D = vcat(r_ij, 0) 
+            # D_vector = D * cross(e_z, r_ij_3D)  
+
+            # construct DMI vector -- for Bloch
+            r_ij = lattice_Q[:, idx] - lattice_Q[:, nn_idx] 
             r_ij_3D = vcat(r_ij, 0) 
-            D_vector = D * cross(e_z, r_ij_3D)  # ask about this abs.() shit
-           
+            D_vector = D * r_ij_3D  
 
             # DMI interaction
             for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
-                ampo += D_vector[a]*epsilon(a,b,c), Sv[b], idx, Sv[c], nn_idx
+                ampo += 0.5*D_vector[a]*epsilon(a,b,c), Sv[b], idx, Sv[c], nn_idx
             end        
         end   
     end
 
-    # boundary conditions
+    # boundary conditions -- must have factor 1/2 because the |m| = 1/2
     for idx in axes(lattice_C,2)
         for nn_idx in nn_idxs_QC[idx]
             
@@ -100,11 +104,17 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
                 end    
             end 
 
-            r_ij = lattice_C[:, idx] - lattice_Q[:, nn_idx] #relative position of two neighbors
-            r_ij_3D = vcat(r_ij, 0) 
-            D_vector = abs.(D * cross(e_z, r_ij_3D))
-            
+            # for Neel
+            # r_ij = lattice_C[:, idx] - lattice_Q[:, nn_idx] 
+            # r_ij_3D = vcat(r_ij, 0) 
+            # D_vector = D * cross(e_z, r_ij_3D)
 
+            # for Bloch
+            r_ij = lattice_C[:, idx] - lattice_Q[:, nn_idx] 
+            r_ij_3D = vcat(r_ij, 0) 
+            D_vector = D * r_ij_3D
+            
+            
             for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
                 ampo += 0.5*D_vector[a]*epsilon(a,b,c)*e_z[c], Sv[b], nn_idx
             end
@@ -115,30 +125,62 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
     return H
 end   
 
-function calculate_TopoCharge_FromMag(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}, lattice_Q::Array{Float64,2}) 
-    
-    N = size(lattice_Q,2)
+function calculate_TopoCharge(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}, lattice_Q::Array{Float64,2})
+
+    a1 = [1.0, 0.0]
+    a2 = [0.0, 1.0]
+    range = norm(a1 .+ a2)
+
+    tree_Q = KDTree(lattice_Q, reorder=false)  
+    onsite_idxs = inrange(tree_Q, tree_Q.data, 0.01) 
+    nn_idxs = inrange(tree_Q, tree_Q.data, range) 
+    nn_idxs_QQ = setdiff.(nn_idxs, onsite_idxs) 
   
     coor_vec = Tuple{Tuple{Float64, Float64}, Vector{Float64}}[]  
     triangles = Tuple{Tuple{Tuple{Float64, Float64}, Tuple{Float64, Float64}, Tuple{Float64, Float64}}, Tuple{Vector{Float64}, Vector{Float64}, Vector{Float64}}}[]
     ρ = Float64[]
     
     for idx in axes(lattice_Q,2)
-      M_norm = sqrt(Mx[idx]^2 + My[idx]^2 + Mz[idx]^2)
-      push!(coor_vec, ((lattice_Q[1,idx] , lattice_Q[2,idx]), [Mx[idx], My[idx], Mz[idx]]/M_norm)) 
+        x, y = lattice_Q[1,idx], lattice_Q[2,idx]
+        M_norm = sqrt(Mx[idx]^2 + My[idx]^2 + Mz[idx]^2)
+        M = [Mx[idx], My[idx], Mz[idx]]/M_norm
+        push!(coor_vec, ((x, y), M)) 
+    end
+
+    # Generate triangles and calculate topological charge
+    for idx in 1:axes(lattice_Q, 2)
+        if length(nn_idxs_QQ[idx]) >= 2
+            # Sort or choose neighbors deterministically, if needed
+            # For simple grids, neighbors can typically be taken directly
+            for combo in combinations(nn_idxs_QQ[idx], 2)
+                n1, n2 = combo
+                # Form and calculate triangle idx, n1, n2
+                V1 = [Mx[idx], My[idx], Mz[idx]]
+                V2 = [Mx[n1], My[n1], Mz[n1]]
+                V3 = [Mx[n2], My[n2], Mz[n2]]
+                X = 1.0 + dot(V1, V2) + dot(V2, V3) + dot(V3, V1)
+                Y = dot(V1, cross(V2, V3))
+                A = 2 * atan(Y, X)
+                push!(ρ, A)
+            end
+        end
     end
   
     # for i in 1:N-1, j in 1:N-1
-    #   p1, v1 = coor_vec[(i-1)*N + j]
-    #   p2, v2 = coor_vec[(i-1)*N + j+1]
-    #   p3, v3 = coor_vec[i*N + j+1]
-            
-    #   push!(triangles, ((p1, p2, p3),(v1, v2, v3)))  
-            
-    #   p4, v4 = coor_vec[i*N + j]
-    #   push!(triangles, ((p1, p3, p4),(v1, v3, v4)))
-    # end
-  
+    #     idx1 = (i-1)*N + j
+    #     idx2 = (i-1)*N + j + 1
+    #     idx3 = i*N + j + 1
+    #     idx4 = i*N + j
+
+    #     p1, v1 = coor_vec[idx1]
+    #     p2, v2 = coor_vec[idx2]
+    #     p3, v3 = coor_vec[idx3]
+    #     p4, v4 = coor_vec[idx4]
+
+    #     push!(triangles, ((p1, p2, p3),(v1, v2, v3)))
+    #     push!(triangles, ((p1, p3, p4),(v1, v3, v4)))    
+    # end   
+
     # for (coordinates, vectors) in triangles 
     #   V1, V2, V3 = vectors  
     #   L1, L2, L3 = coordinates 
@@ -163,18 +205,15 @@ function calculate_TopoCharge_FromMag(Mx::Vector{Float64}, My::Vector{Float64}, 
     # return Q
 end
 
-#notes: why is the skyrmion always shifted along the [1,-1]-direction?
-# how can I get the bloch skyrmion instead of the neel skyrmion?
-
 let
 
     nsweeps = 100
-    maxdim = [20 for n = 1:nsweeps]
+    maxdim = [30 for n = 1:nsweeps]
     cutoff = 1e-10
     obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
     
-    Lx = 15
-    Ly = 15
+    Lx = 11
+    Ly = 11
     J = -1.0
     D = 2*π/sqrt(Lx*Ly)
     Bcr = 0.5*D^2
@@ -220,33 +259,33 @@ let
     # end
     # plt.show()
 
-    ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
+    # ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
 
-    H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D)
+    # H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D)
 
-    E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
+    # E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
 
-    sx_expval = expect(ψ, "Sx")
-    sy_expval = expect(ψ, "Sy")
-    sz_expval = expect(ψ, "Sz")
-    #splus_expval = abs.(sx_expval + im * sy_expval)
+    # sx_expval = expect(ψ, "Sx")
+    # sy_expval = expect(ψ, "Sy")
+    # sz_expval = expect(ψ, "Sz")
+    # #splus_expval = abs.(sx_expval + im * sy_expval)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(projection = "3d")
+    # fig = plt.figure()
+    # ax = fig.add_subplot(projection = "3d")
     
-    for idx in axes(lattice_Q,2)
-        t = sz_expval
-        x, y, z = lattice_Q[1,idx],lattice_Q[2,idx], 0.0
-        vmin = minimum(t)
-        vmax = maximum(t)
-        cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
-        norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
-        ax.quiver(x,y,z,sx_expval[idx],sy_expval[idx],sz_expval[idx],normalize=true,color=cmap(norm(t[idx])))
-        plt.xlabel("x")
-        plt.ylabel("y")
-    end
-    ax.set_aspect("equal")
-    plt.show()
+    # for idx in axes(lattice_Q,2)
+    #     t = sz_expval
+    #     x, y, z = lattice_Q[1,idx],lattice_Q[2,idx], 0.0
+    #     vmin = minimum(t)
+    #     vmax = maximum(t)
+    #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
+    #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
+    #     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
+    #     plt.xlabel("x")
+    #     plt.ylabel("y")
+    # end
+    # ax.set_aspect("equal")
+    # plt.show()
 
     # for idx in axes(lattice_Q, 2)
     #     plt.scatter(lattice_Q[1,idx], lattice_Q[2,idx], c=sz_expval[idx], vmin=-0.5, vmax=0.5)
