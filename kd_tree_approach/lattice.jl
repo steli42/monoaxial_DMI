@@ -298,8 +298,8 @@ let
     println("For alpha = $α: Final energy of psi = $E")
     println("For alpha = $α: Final energy variance of psi = $σ")
 
-    fig = plt.figure()
-    ax = fig.add_subplot(projection = "3d")
+    # fig = plt.figure()
+    # ax = fig.add_subplot(projection = "3d")
     
     # for idx in axes(lattice_QH,2)
     #     t = sz_expval
