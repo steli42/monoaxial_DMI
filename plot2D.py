@@ -48,15 +48,15 @@ def plot_3d_quiver(x, y, z, u, v, w, xlim=None, ylim=None, zlim=None):
     ax.grid(False)    
     plt.show()
 
-
-X,Y,Z,U,V,W,A = np.loadtxt('low_Bpin_1_5/original/0_1_Mag2D_original.csv',delimiter=',', unpack=True)
+file_path = '/Users/stefan.liscak/Documents/monoaxial_DMI/kd_tree_approach/original/1_0_Mag2D_original.csv'
+X,Y,Z,U,V,W,A = np.loadtxt(file_path, delimiter=',', unpack=True)
 
 xmax = X.max()
 ymax = Y.max()
 zmax = Z.max()
 
-xlim = (-0.5, xmax + 0.5)
-ylim = (-0.5, ymax + 0.5)
+xlim = (-xmax - 0.5, xmax + 0.5)
+ylim = (-ymax - 0.5, ymax + 0.5)
 zlim = (-1.0, zmax + 2.0)
 
 plot_3d_quiver(X,Y,Z,U,V,W,xlim=xlim, ylim=ylim, zlim=zlim)

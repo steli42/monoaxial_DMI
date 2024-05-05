@@ -132,7 +132,23 @@ function insert_magnetization!(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vec
     insert!(Mz, index, mag_vector[3])
 end
 
-function calculate_TopoCharge(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}, 
+function write_mag_to_csv(file_path::String, lattice_QH::Array{Float64,2},
+     Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64})
+
+    open(file_path, "w") do f_conjugated
+        for idx in axes(lattice_QH, 2)
+            @printf(f_conjugated, "%f,", lattice_QH[1, idx])
+            @printf(f_conjugated, "%f,", lattice_QH[2, idx])
+            @printf(f_conjugated, "%f,", 0.0)  
+            @printf(f_conjugated, "%f,", Mx[idx])
+            @printf(f_conjugated, "%f,", My[idx])
+            @printf(f_conjugated, "%f,", Mz[idx])
+            @printf(f_conjugated, "%f\n", sqrt(Mx[idx]^2 + My[idx]^2 + Mz[idx]^2))
+        end
+    end
+end
+
+function calculate_topological_charge(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}, 
         lattice_QH::Array{Float64,2}, Lx::Int64, Ly::Int64)
   
     coor_vec = Tuple{Tuple{Float64, Float64}, Vector{Float64}}[]  
@@ -204,9 +220,9 @@ let
  
     Energies = []
 
-    # Define directories
-    original_dir = "original"
-    conjugated_dir = "conjugated"
+    base_dir = "kd_tree_approach"
+    original_dir = joinpath(base_dir, "original")
+    conjugated_dir = joinpath(base_dir, "conjugated")
 
     # Create directories if they don't exist
     isdir(original_dir) || mkdir(original_dir)
@@ -276,40 +292,31 @@ let
     formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
     original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
     conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_Mag2D_conjugated.csv")
-    
-    f_original = open(original_file_path, "w")
-    for idx in axes(lattice_QH,2)
-      @printf f_original "%f,"  lattice_QH[1,idx]
-      @printf f_original "%f,"  lattice_QH[2,idx]
-      @printf f_original "%f,"  0.0
-      @printf f_original "%f,"  sx_expval[idx]
-      @printf f_original "%f,"  sy_expval[idx]
-      @printf f_original "%f,"  sz_expval[idx]
-      @printf f_original "%f\n" sqrt(sx_expval[idx]^2 + sy_expval[idx]^2 + sz_expval[idx]^2)
-    end  
-    close(f_original)
+
+    write_mag_to_csv(original_file_path, lattice_QH, sx_expval, sy_expval, sz_expval)
+
     println("For alpha = $α: Final energy of psi = $E")
     println("For alpha = $α: Final energy variance of psi = $σ")
 
     fig = plt.figure()
     ax = fig.add_subplot(projection = "3d")
     
-    for idx in axes(lattice_QH,2)
-        t = sz_expval
-        x, y, z = lattice_QH[1,idx],lattice_QH[2,idx], 0.0
-        vmin = minimum(t)
-        vmax = maximum(t)
-        cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
-        norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
-        ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
-        plt.xlabel("x")
-        plt.ylabel("y")
-    end
-    ax.set_aspect("equal")
-    plt.show()
+    # for idx in axes(lattice_QH,2)
+    #     t = sz_expval
+    #     x, y, z = lattice_QH[1,idx],lattice_QH[2,idx], 0.0
+    #     vmin = minimum(t)
+    #     vmax = maximum(t)
+    #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
+    #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
+    #     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
+    #     plt.xlabel("x")
+    #     plt.ylabel("y")
+    # end
+    # ax.set_aspect("equal")
+    # plt.show()
 
-    Q = calculate_TopoCharge(sx_expval, sy_expval, sz_expval, lattice_QH, Lx, Ly)
-    @show Q
+    # Q = calculate_topological_charge(sx_expval, sy_expval, sz_expval, lattice_QH, Lx, Ly)
+    # @show Q
 
     ###################################################################################
     ψ_c = conj.(ψ)
@@ -325,48 +332,22 @@ let
         insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5])
     end
 
-    f_conjugated = open(conjugated_file_path, "w")
-    for idx in axes(lattice_QH,2)
-      @printf f_conjugated "%f,"  lattice_QH[1,idx]
-      @printf f_conjugated "%f,"  lattice_QH[2,idx]
-      @printf f_conjugated "%f,"  0.0
-      @printf f_conjugated "%f,"  sx_expval_c[idx]
-      @printf f_conjugated "%f,"  sy_expval_c[idx]
-      @printf f_conjugated "%f,"  sz_expval_c[idx]
-      @printf f_conjugated "%f\n" sqrt(sx_expval_c[idx]^2 + sy_expval_c[idx]^2 + sz_expval_c[idx]^2)
-    end  
-    close(f_conjugated)
+    write_mag_to_csv(conjugated_file_path, lattice_QH, sx_expval_c, sy_expval_c, sz_expval_c)
+
     println("For alpha = $α: Final energy of psi conjugated = $E_c")
     println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
 
-    psi_file = h5open("$(formatted_alpha)_Mag2D_original.h5","w")
-    write(psi_file,"Psi",ψ)
+    file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_original.h5")
+    psi_file = h5open(file_path, "w")
+    write(psi_file, "Psi", ψ)
     close(psi_file)
 
-    psi_file_conj = h5open("$(formatted_alpha)_Mag2D_conjugated.h5","w")
+    file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_conjugated.h5")
+    psi_file_conj = h5open(file_path,"w")
     write(psi_file_conj,"Psi_c",ψ_c)
     close(psi_file_conj)
 
-    push!(Energies, (α, norm(E), norm(E_c), norm(σ), norm(σ_c))) 
-
-    fig = plt.figure()
-    ax = fig.add_subplot(projection = "3d")
-    
-    for idx in axes(lattice_QH,2)
-        t = sz_expval_c
-        x, y, z = lattice_QH[1,idx],lattice_QH[2,idx], 0.0
-        vmin = minimum(t)
-        vmax = maximum(t)
-        cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
-        norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
-        ax.quiver(x, y, z, sx_expval_c[idx], sy_expval_c[idx], sz_expval_c[idx], normalize=true, color=cmap(norm(t[idx])))
-        plt.xlabel("x")
-        plt.ylabel("y")
-    end
-    ax.set_aspect("equal")
-    plt.show()
-    Q = calculate_TopoCharge(sx_expval_c, sy_expval_c, sz_expval_c, lattice_QH, Lx, Ly)
-    @show Q
+    push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c))) 
     
     return
 end
