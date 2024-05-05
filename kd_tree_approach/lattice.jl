@@ -54,7 +54,7 @@ function fetch_initial_state(lattice_Q::Array{Float64,2}, Lx::Int64, Ly::Int64)
 end
 
 function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64,2}, lattice_C::Array{Float64,2},
-        nn_idxs_QQ::Vector{Vector{Int}}, nn_idxs_QC::Vector{Vector{Int}}, Bcr::Float64, J::Float64, D::Float64)
+        nn_idxs_QQ::Vector{Vector{Int}}, nn_idxs_QC::Vector{Vector{Int}}, Bcr::Float64, J::Float64, D::Float64, α::Float64)
 
     Sv = ["Sx", "Sy", "Sz"]
     e_z = [0.0, 0.0, 1.0] #can serve as magnetisation vector for spins UP/DOWN -- m = ±1/2*e_z
@@ -69,6 +69,7 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
             ampo += B[a], Sv[a], idx
         end 
     
+        # pair-wise interaction
         for nn_idx in nn_idxs_QQ[idx] # must have factor 1/2 to account for double-counting bonds 
 
             # Heisenberg interaction 
@@ -79,12 +80,20 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
             # construct DMI vector -- for Neel
             # r_ij = lattice_Q[:, idx] - lattice_Q[:, nn_idx] 
             # r_ij_3D = vcat(r_ij, 0) 
-            # D_vector = D * cross(e_z, r_ij_3D)  
+            # if r_ij[1] == 0 && r_ij[2] != 0  # x-component is 0 and y-component is non-zero (vertical)
+            #     D_vector = D * α * cross(e_z, r_ij_3D)
+            # elseif r_ij[2] == 0 && r_ij[1] != 0  # y-component is 0 and x-component is non-zero (horizontal)
+            #     D_vector = D * cross(e_z, r_ij_3D)
+            # end   
 
             # construct DMI vector -- for Bloch
             r_ij = lattice_Q[:, idx] - lattice_Q[:, nn_idx] 
-            r_ij_3D = vcat(r_ij, 0) 
-            D_vector = D * r_ij_3D  
+            r_ij_3D = vcat(r_ij, 0)   
+            if r_ij[1] == 0 && r_ij[2] != 0  
+                D_vector = D * α * r_ij_3D
+            elseif r_ij[2] == 0 && r_ij[1] != 0  
+                D_vector = D * r_ij_3D
+            end
 
             # DMI interaction
             for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
@@ -108,12 +117,20 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
             # for Neel
             # r_ij = lattice_C[:, idx] - lattice_Q[:, nn_idx] 
             # r_ij_3D = vcat(r_ij, 0) 
-            # D_vector = D * cross(e_z, r_ij_3D)
+            # if r_ij[1] == 0 && r_ij[2] != 0  # x-component is 0 and y-component is non-zero (vertical)
+            #     D_vector = D * α * cross(e_z, r_ij_3D)
+            # elseif r_ij[2] == 0 && r_ij[1] != 0  # y-component is 0 and x-component is non-zero (horizontal)
+            #     D_vector = D * cross(e_z, r_ij_3D)
+            # end   
 
             # for Bloch
             r_ij = lattice_C[:, idx] - lattice_Q[:, nn_idx] 
-            r_ij_3D = vcat(r_ij, 0) 
-            D_vector = D * r_ij_3D
+            r_ij_3D = vcat(r_ij, 0.0) 
+            if r_ij[1] == 0.0 && r_ij[2] != 0.0  
+                D_vector = D * α * r_ij_3D
+            elseif r_ij[2] == 0.0 && r_ij[1] != 0.0  
+                D_vector = D * r_ij_3D
+            end
             
             for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
                 ampo += 0.5*D_vector[a]*epsilon(a,b,c)*e_z[c], Sv[b], nn_idx
@@ -216,7 +233,6 @@ let
     α_range₂ = 0.2:-δ:0.0
     α_values_pos = unique(collect(Iterators.flatten((α_range₁,α_range₂))))
     α_values_neg = sort(map(x -> -x, α_values_pos))
-    α = 1.0
  
     Energies = []
 
@@ -271,84 +287,178 @@ let
 
     ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
 
-    H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D)
+    for α in α_values_pos 
 
-    E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
-    σ = inner(H,ψ,H,ψ) - E^2
-    
-    if isAdiabatic
-        ψ₀ = ψ
+        H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α)
+
+        E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
+        σ = inner(H,ψ,H,ψ) - E^2
+        
+        if isAdiabatic
+            ψ₀ = ψ
+        end
+
+        sx_expval = expect(ψ, "Sx")
+        sy_expval = expect(ψ, "Sy")
+        sz_expval = expect(ψ, "Sz")
+
+        origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
+        if origin_index !== nothing
+            insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5])
+        end
+
+        formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
+        original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
+        conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_Mag2D_conjugated.csv")
+
+        write_mag_to_csv(original_file_path, lattice_QH, sx_expval, sy_expval, sz_expval)
+
+        println("For alpha = $α: Final energy of psi = $E")
+        println("For alpha = $α: Final energy variance of psi = $σ")
+
+        ###################################################################################
+        ψ_c = conj.(ψ)
+        E_c = inner(ψ_c', H, ψ_c)
+        σ_c = inner(H, ψ_c, H, ψ_c) - E_c^2
+
+        sx_expval_c = expect(ψ_c, "Sx")
+        sy_expval_c = expect(ψ_c, "Sy")
+        sz_expval_c = expect(ψ_c, "Sz")
+
+        origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
+        if origin_index !== nothing
+            insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5])
+        end
+
+        write_mag_to_csv(conjugated_file_path, lattice_QH, sx_expval_c, sy_expval_c, sz_expval_c)
+
+        println("For alpha = $α: Final energy of psi conjugated = $E_c")
+        println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
+
+        file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_original.h5")
+        psi_file = h5open(file_path, "w")
+        write(psi_file, "Psi", ψ)
+        close(psi_file)
+
+        file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_conjugated.h5")
+        psi_file_conj = h5open(file_path,"w")
+        write(psi_file_conj,"Psi_c",ψ_c)
+        close(psi_file_conj)
+
+        push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c))) 
+
     end
 
-    sx_expval = expect(ψ, "Sx")
-    sy_expval = expect(ψ, "Sy")
-    sz_expval = expect(ψ, "Sz")
+    ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
+    ψ₀ = conj.(ψ₀)
 
-    origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
-    if origin_index !== nothing
-        insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5])
+    for α in α_values_neg
+
+        H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α)
+
+        E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
+        σ = inner(H,ψ,H,ψ) - E^2
+        
+        if isAdiabatic
+            ψ₀ = ψ
+        end
+
+        sx_expval = expect(ψ, "Sx")
+        sy_expval = expect(ψ, "Sy")
+        sz_expval = expect(ψ, "Sz")
+
+        origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
+        if origin_index !== nothing
+            insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5])
+        end
+
+        formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
+        original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
+        conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_Mag2D_conjugated.csv")
+
+        write_mag_to_csv(original_file_path, lattice_QH, sx_expval, sy_expval, sz_expval)
+
+        println("For alpha = $α: Final energy of psi = $E")
+        println("For alpha = $α: Final energy variance of psi = $σ")
+
+        ###################################################################################
+        ψ_c = conj.(ψ)
+        E_c = inner(ψ_c', H, ψ_c)
+        σ_c = inner(H, ψ_c, H, ψ_c) - E_c^2
+
+        sx_expval_c = expect(ψ_c, "Sx")
+        sy_expval_c = expect(ψ_c, "Sy")
+        sz_expval_c = expect(ψ_c, "Sz")
+
+        origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
+        if origin_index !== nothing
+            insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5])
+        end
+
+        write_mag_to_csv(conjugated_file_path, lattice_QH, sx_expval_c, sy_expval_c, sz_expval_c)
+
+        println("For alpha = $α: Final energy of psi conjugated = $E_c")
+        println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
+
+        # file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_original.h5")
+        # psi_file = h5open(file_path, "w")
+        # write(psi_file, "Psi", ψ)
+        # close(psi_file)
+
+        # file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_conjugated.h5")
+        # psi_file_conj = h5open(file_path,"w")
+        # write(psi_file_conj,"Psi_c",ψ_c)
+        # close(psi_file_conj)
+
+        push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c)))
+
     end
 
-    formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
-    original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
-    conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_Mag2D_conjugated.csv")
+    alphas = [t[1] for t in Energies]
+    E_orig = [t[2] for t in Energies]
+    E_conjug = [t[3] for t in Energies]
+    Sigma_orig = [t[4] for t in Energies]
+    Sigma_conjug = [t[5] for t in Energies]
+  
+    E_file = open("Energies.csv", "w")
+      for (i,a) in enumerate(alphas)
+        @printf E_file "%f,"  alphas[i]
+        @printf E_file "%f,"  E_orig[i]
+        @printf E_file "%f,"  E_conjug[i]
+        @printf E_file "%f,"  Sigma_orig[i]
+        @printf E_file "%f\n"  Sigma_conjug[i]
+      end
+    close(E_file)
+  
+    # Create a figure and a 1x2 grid of subplots
+    fig, axs = plt.subplots(1, 2, figsize=(20, 8))  # 1 row, 2 columns of subplots
+  
+    # First subplot: alphas vs E_orig and E_conjug
+    axs[1].scatter(alphas, E_orig, color="none", marker="o", edgecolor="blue", label=L"$E_{\psi_0}$")
+    axs[1].scatter(alphas, E_conjug, color="red", marker="x", label=L"$E_{\text{conj}(\psi_0)}$")
+    axs[1].set_xlabel(L"$D_x/D_y = \alpha$")
+    axs[1].set_ylabel("Energy of state")
+    axs[1].legend()
+  
+    # Second subplot: alphas vs abs(E_orig - E_conjug) on a log scale
+    axs[2].scatter(alphas, abs.(E_orig - E_conjug), color="none", marker="o", edgecolor="green", label=L"$|E_{\psi_0} - E_{\text{conj}(\psi_0)}|$")
+    axs[2].set_yscale("log")
+    axs[2].set_xlabel(L"$D_x/D_y = \alpha$")
+    axs[2].set_ylabel("Log of Absolute Energy Difference")
+    axs[2].legend()
+    # Adjust layout
+    plt.tight_layout()
+    plt.savefig("Energies.pdf")
+  
+    plt.clf()
+    plt.figure()
+    plt.scatter(alphas, Sigma_orig, color="none", marker="o", edgecolor="blue", label=L"$\sigma^2_{\psi_0}$")
+    plt.scatter(alphas, Sigma_conjug, color="red", marker="x", label=L"$\sigma^2_{\text{conj}(\psi_0)}$")
+    plt.ylabel(L"$\langle E^2 \rangle - \langle E \rangle ^2$")
+    plt.legend()
+    plt.xlabel(L"$D_x/D_y = \alpha$")
+    plt.savefig("Variances.pdf")
 
-    write_mag_to_csv(original_file_path, lattice_QH, sx_expval, sy_expval, sz_expval)
-
-    println("For alpha = $α: Final energy of psi = $E")
-    println("For alpha = $α: Final energy variance of psi = $σ")
-
-    # fig = plt.figure()
-    # ax = fig.add_subplot(projection = "3d")
-    
-    # for idx in axes(lattice_QH,2)
-    #     t = sz_expval
-    #     x, y, z = lattice_QH[1,idx],lattice_QH[2,idx], 0.0
-    #     vmin = minimum(t)
-    #     vmax = maximum(t)
-    #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
-    #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
-    #     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
-    #     plt.xlabel("x")
-    #     plt.ylabel("y")
-    # end
-    # ax.set_aspect("equal")
-    # plt.show()
-
-    # Q = calculate_topological_charge(sx_expval, sy_expval, sz_expval, lattice_QH, Lx, Ly)
-    # @show Q
-
-    ###################################################################################
-    ψ_c = conj.(ψ)
-    E_c = inner(ψ_c', H, ψ_c)
-    σ_c = inner(H, ψ_c, H, ψ_c) - E_c^2
-
-    sx_expval_c = expect(ψ_c, "Sx")
-    sy_expval_c = expect(ψ_c, "Sy")
-    sz_expval_c = expect(ψ_c, "Sz")
-
-    origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
-    if origin_index !== nothing
-        insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5])
-    end
-
-    write_mag_to_csv(conjugated_file_path, lattice_QH, sx_expval_c, sy_expval_c, sz_expval_c)
-
-    println("For alpha = $α: Final energy of psi conjugated = $E_c")
-    println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
-
-    file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_original.h5")
-    psi_file = h5open(file_path, "w")
-    write(psi_file, "Psi", ψ)
-    close(psi_file)
-
-    file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_conjugated.h5")
-    psi_file_conj = h5open(file_path,"w")
-    write(psi_file_conj,"Psi_c",ψ_c)
-    close(psi_file_conj)
-
-    push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c))) 
-    
     return
 end
 
@@ -370,3 +480,26 @@ end
     # full_H_arr = array(full_H_ordered)
     # shape = size(full_H_arr)
     # full_H_matrix = sparse(reshape(full_H_arr, (prod(shape[1:length(shape)÷2]), prod(shape[length(shape)÷2+1:end]))))
+
+
+    ########################################################################################## for plotting the field
+
+    # fig = plt.figure()
+    # ax = fig.add_subplot(projection = "3d")
+        
+    # for idx in axes(lattice_QH,2)
+    #     t = sz_expval
+    #     x, y, z = lattice_QH[1,idx],lattice_QH[2,idx], 0.0
+    #     vmin = minimum(t)
+    #     vmax = maximum(t)
+    #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
+    #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
+    #     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
+    #     plt.xlabel("x")
+    #     plt.ylabel("y")
+    # end
+    # ax.set_aspect("equal")
+    # plt.show()
+
+    # Q = calculate_topological_charge(sx_expval, sy_expval, sz_expval, lattice_QH, Lx, Ly)
+    # println("The topological charge Q is: $Q")
