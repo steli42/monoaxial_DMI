@@ -143,7 +143,7 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
         os += B[a], Sv[a], n
       end
 
-      #interaction with classical environment at the boundary
+      #interaction with classical environment at the boundary ---- should we add 1/2 ? also should we add DMI ?
       if (i == 1 || i == L || j == 1 || j == L)
         os += J,"Sz",n
       end
