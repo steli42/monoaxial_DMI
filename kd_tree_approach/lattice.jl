@@ -398,28 +398,14 @@ let
         println("For alpha = $α: Final energy of psi conjugated = $E_c")
         println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
 
-        # file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_original.h5")
-        # psi_file = h5open(file_path, "w")
-        # write(psi_file, "Psi", ψ)
-        # close(psi_file)
-
-        # file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_conjugated.h5")
-        # psi_file_conj = h5open(file_path,"w")
-        # write(psi_file_conj,"Psi_c",ψ_c)
-        # close(psi_file_conj)
-
         push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c)))
 
     end
 
-    alphas = [t[1] for t in Energies]
-    E_orig = [t[2] for t in Energies]
-    E_conjug = [t[3] for t in Energies]
-    Sigma_orig = [t[4] for t in Energies]
-    Sigma_conjug = [t[5] for t in Energies]
+    alphas, E_orig, E_conjug, Sigma_orig, Sigma_conjug = map(collect, zip(Energies...))
   
     E_file = open("Energies.csv", "w")
-      for (i,a) in enumerate(alphas)
+      for i in eachindex(alphas)
         @printf E_file "%f,"  alphas[i]
         @printf E_file "%f,"  E_orig[i]
         @printf E_file "%f,"  E_conjug[i]
@@ -480,7 +466,7 @@ end
     # full_H_matrix = sparse(reshape(full_H_arr, (prod(shape[1:length(shape)÷2]), prod(shape[length(shape)÷2+1:end]))))
 
 
-    ########################################################################################## for plotting the field
+    ########################################################################################## for plotting a field
 
     # fig = plt.figure()
     # ax = fig.add_subplot(projection = "3d")
