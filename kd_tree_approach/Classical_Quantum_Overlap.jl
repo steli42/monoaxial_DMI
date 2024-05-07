@@ -1,6 +1,6 @@
 using ITensors, Printf, PyPlot, HDF5
 pygui(true)
-include("functions.jl")
+
 
 
 let 
@@ -18,12 +18,12 @@ let
 
         formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
         
-        f = h5open("low_Bpin_1_5_bonddim_30/$(formatted_alpha)_Mag2D_conjugated.h5","r") 
-        ψ₁ = read(f,"Psi_2",MPS)
+        f = h5open("kd_tree_approach/$(formatted_alpha)_Mag2D_conjugated.h5","r") 
+        ψ₁ = read(f,"Psi_c",MPS)
         close(f)
 
-        f = h5open("low_Bpin_1_5_bonddim_1/$(formatted_alpha)_Mag2D_conjugated.h5","r") 
-        ψ₂ = read(f,"Psi_2",MPS)
+        f = h5open("kd_tree_approach/bonddim_25/$(formatted_alpha)_Mag2D_conjugated.h5","r") 
+        ψ₂ = read(f,"Psi_c",MPS)
         close(f)
         
         in = norm(inner(ψ₁',ψ₂))

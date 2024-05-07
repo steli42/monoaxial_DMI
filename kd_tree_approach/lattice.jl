@@ -216,8 +216,8 @@ end
 
 let
 
-    nsweeps = 25
-    maxdim = [25 for n = 1:nsweeps]
+    nsweeps = 100
+    maxdim = [1 for n = 1:nsweeps]
     cutoff = 1e-10
     obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
     isAdiabatic = true
