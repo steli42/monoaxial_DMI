@@ -1,6 +1,6 @@
 using ITensors, Printf, PyPlot, HDF5
 pygui(true)
-include("/Users/stefan.liscak/Documents/monoaxial_DMI/old_approach/functions.jl")
+include("old_approach/functions.jl")
 
 ## IF WE WANT TO USE THIS WE HAVE TO CHANGE FUNCTIONS.JL TOO
 
@@ -8,7 +8,7 @@ let
 
   δ = 0.02
   Δ = 0.1
-  L = 9 
+  L = 11 
 
   nsweeps = 100
   maxdim = [20 for n=1:nsweeps]
