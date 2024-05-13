@@ -57,7 +57,7 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
         nn_idxs_QQ::Vector{Vector{Int}}, nn_idxs_QC::Vector{Vector{Int}}, Bcr::Float64, J::Float64, D::Float64, α::Float64)
 
     Sv = ["Sx", "Sy", "Sz"]
-    e_z = [0.0, 0.0, 1.0] #can serve as magnetisation vector for spins UP/DOWN -- m = ±1/2*e_z
+    e_z = [0.0, 0.0, sign(Bcr)] #can serve as magnetisation vector for spins UP/DOWN -- m = ±1/2*e_z
     B = [0.0, 0.0, 0.55*Bcr]
 
     ampo = OpSum()
@@ -224,9 +224,9 @@ let
 
     δ = 0.02
     Δ = 0.1
-    Lx, Ly = 15, 15
+    Lx, Ly = 9, 9
     J = 1.0
-    D = π/sqrt(Lx*Ly)
+    D = -π/sqrt(Lx*Ly)
     Bcr = 0.5*D^2
 
     α_range₁ = 1.0:-Δ:0.2
