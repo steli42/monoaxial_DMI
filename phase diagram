@@ -1,0 +1,88 @@
+using ITensors, Printf, PyPlot, HDF5
+pygui(true)
+include("/Users/stefan.liscak/Documents/monoaxial_DMI/old_approach/functions.jl")
+
+## IF WE WANT TO USE THIS WE HAVE TO CHANGE FUNCTIONS.JL TOO
+
+let
+
+  δ = 0.02
+  Δ = 0.1
+  L = 9 
+
+  nsweeps = 100
+  maxdim = [20 for n=1:nsweeps]
+  cutoff = 1E-10
+  isAdiabatic = true
+  loadPsi = false #true loads a chosen .h5 file (relative path needed)
+
+  # set a DMRGObserver that stops the sweeping after a certain condition has been met (in this case ΔE < ε)
+  obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
+
+  #J = -1.0 
+  D = 2*pi/L #2x stronger if we want to have a skyrmion in a tiny 5x5 flake
+  Bcr = 0.5*D*D #2x weaker since D/Bcr should stay the same if we want the same results
+  Bpin = 1.5
+  J = -D
+
+  # Define directories
+  original_dir = "original"
+  
+  # Create directories if they don't exist
+  isdir(original_dir) || mkdir(original_dir)
+  
+  sites, ψ₀ = get_Initial_Psi(L,"skyrmion",loadPsi,"0_0_Mag2D_original.h5") 
+
+  α = 1.0
+  B_range = LinRange(0.0, D, 30)
+  data = zeros(length(B_range),2)
+  i=1
+
+    for Bcr in B_range  #for α in α_values_pos
+
+        H = build_Hamiltonian(sites, D, Bpin, Bcr, J, α, L)
+        
+        E₁, ψ₁ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
+
+        if isAdiabatic
+        ψ₀ = ψ₁
+        end
+
+        σ₁ = inner(H, ψ₁, H, ψ₁) - E₁^2 
+    
+        Magx01 = expect(ψ₁,"Sx")
+        Magy01 = expect(ψ₁,"Sy")
+        Magz01 = expect(ψ₁,"Sz")
+
+        formatted_alpha = replace(string(round(Bcr, digits=2)), "." => "_")
+        original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
+        
+        f_original = open(original_file_path, "w")
+        for (j,mz) in enumerate(Magz01)
+        @printf f_original "%f,"  (j-1.0) ÷ L
+        @printf f_original "%f,"  (j-1.0) % L
+        @printf f_original "%f,"  0.0
+        @printf f_original "%f,"  Magx01[j]
+        @printf f_original "%f,"  Magy01[j]
+        @printf f_original "%f,"  Magz01[j]
+        @printf f_original "%f\n" sqrt(Magx01[j]^2 + Magy01[j]^2 + Magz01[j]^2)
+        end  
+        close(f_original)
+
+        println("For field = $Bcr: Final energy of psi = $E₁")
+        println("For field = $Bcr: Final energy variance of psi = $σ₁")
+
+        pol = 0.0
+        for (j,mz) in enumerate(Magz01)
+        pol += Magz01[j]/(L^2)
+        end
+        
+        data[i,1], data[i,2] = Bcr, pol
+        i+=1
+    end
+
+  scatter(data[:,1],data[:,2])
+
+  return
+ end
+
