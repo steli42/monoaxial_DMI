@@ -57,7 +57,7 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
         nn_idxs_QQ::Vector{Vector{Int}}, nn_idxs_QC::Vector{Vector{Int}}, Bcr::Float64, J::Float64, D::Float64, α::Float64)
 
     Sv = ["Sx", "Sy", "Sz"] 
-    B = [0.0, 0.0, 0.55*Bcr]
+    B = [0.0, 0.0, Bcr]
     e_z = [0.0, 0.0, -sign(Bcr)] #can serve as magnetisation vector for spins UP/DOWN -- m = ±1/2*e_z
     # since we got a + in front of the Zeeman term the polarised spins are ant-ialigned to the field B
 
@@ -200,7 +200,7 @@ end
 let
 
     nsweeps = 100
-    maxdim = [10 for n = 1:nsweeps]
+    maxdim = [1 for n = 1:nsweeps]
     cutoff = 1e-10
     obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
     isAdiabatic = true
@@ -210,7 +210,7 @@ let
     Lx, Ly = 15, 15
     J = -1.0
     D = 2*π/sqrt(Lx*Ly)
-    Bcr = 0.5*D^2
+    Bcr = 0.275*D^2
 
     α_range₁ = 1.0:-Δ:0.2
     α_range₂ = 0.2:-δ:0.0

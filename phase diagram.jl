@@ -88,16 +88,15 @@ end
 
 let
 
-  L = 9 
+  L = 11 
 
-  nsweeps = 20
-  maxdim = [5 for n=1:nsweeps]
+  nsweeps = 100
+  maxdim = [20 for n=1:nsweeps]
   cutoff = 1E-10
 
   obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
 
   D = 2*pi/L 
-  Bcr = 0.5*D*D 
   Bpin = 1.5
   J = -0.5*D
 
@@ -109,7 +108,7 @@ let
   ψ₀ = randomMPS(sites) 
 
   α = 1.0
-  B_range = LinRange(0.0, D, 10)
+  B_range = LinRange(0.0, D, 15)
   data = zeros(length(B_range),2)
   i=1
 
@@ -148,7 +147,7 @@ let
     pol += Magz01[j]/(L^2)
     end
     
-    data[i,1], data[i,2] = Bcr, -pol
+    data[i,1], data[i,2] = Bcr, pol
     i+=1
   end
 
