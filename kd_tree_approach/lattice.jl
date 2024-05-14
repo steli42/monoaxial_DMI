@@ -56,9 +56,10 @@ end
 function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64,2}, lattice_C::Array{Float64,2},
         nn_idxs_QQ::Vector{Vector{Int}}, nn_idxs_QC::Vector{Vector{Int}}, Bcr::Float64, J::Float64, D::Float64, α::Float64)
 
-    Sv = ["Sx", "Sy", "Sz"]
-    e_z = [0.0, 0.0, sign(Bcr)] #can serve as magnetisation vector for spins UP/DOWN -- m = ±1/2*e_z. Is aligned with external field
+    Sv = ["Sx", "Sy", "Sz"] 
     B = [0.0, 0.0, 0.55*Bcr]
+    e_z = [0.0, 0.0, -sign(Bcr)] #can serve as magnetisation vector for spins UP/DOWN -- m = ±1/2*e_z
+    # since we got a + in front of the Zeeman term the polarised spins are ant-ialigned to the field B
 
     ampo = OpSum()
 
@@ -99,9 +100,9 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
             
             for a in eachindex(Sv)
                 if lattice_C[:,idx] == [0.0, 0.0]
-                    ampo -= 0.5*J*e_z[a], Sv[a], nn_idx  
+                    ampo -= 0.5*J*e_z[a], Sv[a], nn_idx  #central spins wants to be anti-aligned to the boundary
                 else
-                    ampo += 0.5*J*e_z[a], Sv[a], nn_idx  
+                    ampo += 0.5*J*e_z[a], Sv[a], nn_idx  #boundary spins want to be aligned with polarised spins in the vacuum
                 end    
             end  
 
@@ -208,8 +209,8 @@ let
     Δ = 0.1
     Lx, Ly = 15, 15
     J = -1.0
-    D = π/sqrt(Lx*Ly)
-    Bcr = -0.5*D^2
+    D = 2*π/sqrt(Lx*Ly)
+    Bcr = 0.5*D^2
 
     α_range₁ = 1.0:-Δ:0.2
     α_range₂ = 0.2:-δ:0.0
