@@ -43,9 +43,9 @@ function fetch_initial_state(lattice_Q::Array{Float64,2}, Lx::Int64, Ly::Int64)
         x,y = lattice_Q[1,idx],lattice_Q[2,idx]
         r = sqrt(x^2 + y^2)
         f = atan(y,x) + π/2
-        t = 1.9*π/2*(1.0-r)/sqrt(0.25*Lx^2 + 0.25*Ly^2)
+        t = 2.5*π/2*(1.0-r)/sqrt(0.25*Lx^2 + 0.25*Ly^2)
 
-        Ryn = exp(-im*t*op("Sy", siteinds(ψ₀), idx))
+        Ryn = exp(im*t*op("Sy", siteinds(ψ₀), idx))
         Rzn = exp(-im*f*op("Sz", siteinds(ψ₀), idx))
         ψ₀[idx] = Rzn*(Ryn*ψ₀[idx])
     end  
@@ -57,7 +57,7 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
         nn_idxs_QQ::Vector{Vector{Int}}, nn_idxs_QC::Vector{Vector{Int}}, Bcr::Float64, J::Float64, D::Float64, α::Float64)
 
     Sv = ["Sx", "Sy", "Sz"]
-    e_z = [0.0, 0.0, sign(Bcr)] #can serve as magnetisation vector for spins UP/DOWN -- m = ±1/2*e_z
+    e_z = [0.0, 0.0, sign(Bcr)] #can serve as magnetisation vector for spins UP/DOWN -- m = ±1/2*e_z. Is aligned with external field
     B = [0.0, 0.0, 0.55*Bcr]
 
     ampo = OpSum()
@@ -66,7 +66,7 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
 
         # Zeeman
         for a in eachindex(Sv)
-            ampo -= B[a], Sv[a], idx
+            ampo += B[a], Sv[a], idx
         end 
     
         # pair-wise interaction
@@ -74,20 +74,11 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
 
             # Heisenberg interaction 
             for s in Sv
-                ampo -= 0.5*J, s, idx, s, nn_idx
-            end
-            
-            # construct DMI vector -- for Neel
-            # r_ij = lattice_Q[:, idx] - lattice_Q[:, nn_idx] 
-            # r_ij_3D = vcat(r_ij, 0) 
-            # if r_ij[1] == 0 && r_ij[2] != 0  # x-component is 0 and y-component is non-zero (vertical)
-            #     D_vector = D * α * cross(e_z, r_ij_3D)
-            # elseif r_ij[2] == 0 && r_ij[1] != 0  # y-component is 0 and x-component is non-zero (horizontal)
-            #     D_vector = D * cross(e_z, r_ij_3D)
-            # end   
+                ampo += 0.5*J, s, idx, s, nn_idx
+            end  
 
             # construct DMI vector -- for Bloch
-            r_ij = lattice_Q[:, idx] - lattice_Q[:, nn_idx] 
+            r_ij = lattice_Q[:, nn_idx] - lattice_Q[:, idx]
             r_ij_3D = vcat(r_ij, 0)   
             if r_ij[2] == 0 && r_ij[1] != 0  
                 D_vector = D * α * r_ij_3D
@@ -108,23 +99,14 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
             
             for a in eachindex(Sv)
                 if lattice_C[:,idx] == [0.0, 0.0]
-                    ampo -= 0.5*J*e_z[a], Sv[a], nn_idx  # boundary classical spin facing UP 
+                    ampo -= 0.5*J*e_z[a], Sv[a], nn_idx  
                 else
-                    ampo += 0.5*J*e_z[a], Sv[a], nn_idx  # central classical spin facing DOWN
+                    ampo += 0.5*J*e_z[a], Sv[a], nn_idx  
                 end    
-            end 
-
-            # for Neel
-            # r_ij = lattice_C[:, idx] - lattice_Q[:, nn_idx] 
-            # r_ij_3D = vcat(r_ij, 0) 
-            # if r_ij[1] == 0 && r_ij[2] != 0  # x-component is 0 and y-component is non-zero (vertical)
-            #     D_vector = D * α * cross(e_z, r_ij_3D)
-            # elseif r_ij[2] == 0 && r_ij[1] != 0  # y-component is 0 and x-component is non-zero (horizontal)
-            #     D_vector = D * cross(e_z, r_ij_3D)
-            # end   
+            end  
 
             # for Bloch
-            r_ij = lattice_Q[:, nn_idx] - lattice_C[:, idx] 
+            r_ij = lattice_C[:, idx] - lattice_Q[:, nn_idx]   
             r_ij_3D = vcat(r_ij, 0.0) 
             if r_ij[2] == 0.0 && r_ij[1] != 0.0  
                 D_vector = D * α * r_ij_3D
@@ -224,10 +206,10 @@ let
 
     δ = 0.02
     Δ = 0.1
-    Lx, Ly = 9, 9
-    J = 1.0
-    D = -π/sqrt(Lx*Ly)
-    Bcr = 0.5*D^2
+    Lx, Ly = 15, 15
+    J = -1.0
+    D = π/sqrt(Lx*Ly)
+    Bcr = -0.5*D^2
 
     α_range₁ = 1.0:-Δ:0.2
     α_range₂ = 0.2:-δ:0.0
@@ -286,7 +268,7 @@ let
     Energies = []
 
     ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
-
+    
     #for α in α_values_pos 
 
         α = 1.0
