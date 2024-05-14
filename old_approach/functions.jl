@@ -82,7 +82,7 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
   Sv = ["Sx", "Sy", "Sz"]
   Dhor = [0.0, D, 0.0] #D for horizontally oriented bonds (only has y-component)
   Dver = [α*D, 0.0, 0.0] #D for vertically oriented bonds (only has x-component)
-  B = [0.0, 0.0, -Bcr]#!!!!!!!!!!!!![0.0, 0.0, -0.55*Bcr]
+  B = [0.0, 0.0, -0.55*Bcr]
 
   os = 0.0
   os = OpSum()
@@ -142,16 +142,15 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
         os += B[a], Sv[a], n
       end
 
-      # !!!!!!!!!!! uncomment later
-      # #interaction with classical environment at the boundary ---- should we add 1/2 ? also should we add DMI ?
-      # if (i == 1 || i == L || j == 1 || j == L)
-      #   os += J,"Sz",n
-      # end
+      #interaction with classical environment at the boundary ---- should we add 1/2 ? also should we add DMI ?
+      if (i == 1 || i == L || j == 1 || j == L)
+        os += J,"Sz",n
+      end
 
-      # #pinning of the central spin
-      # if (i == (div(L,2) + 1) && j == (div(L,2) + 1))
-      #   os += Bpin,"Sz",n
-      # end
+      #pinning of the central spin
+      if (i == (div(L,2) + 1) && j == (div(L,2) + 1))
+        os += Bpin,"Sz",n
+      end
 
     end 
   end 
