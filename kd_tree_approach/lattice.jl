@@ -209,8 +209,8 @@ let
     Δ = 0.1
     Lx, Ly = 15, 15
     J = -1.0
-    D = 2*π/sqrt(Lx*Ly)
-    Bcr = 0.275*D^2
+    D = π/sqrt(Lx*Ly)    #using 0.65 we get a reeeaally small skyrmion so I deleted the 2 in 2pi
+    Bcr = 0.65*D^2 #0.275
 
     α_range₁ = 1.0:-Δ:0.2
     α_range₂ = 0.2:-δ:0.0

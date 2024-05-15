@@ -1,12 +1,24 @@
 using ITensors, Printf, PyPlot, HDF5
 pygui(true)
 
+function epsilon(i, j, k) # Levi-Civitta symbol
+
+  if [i,j,k] in [[1,2,3], [3,1,2], [2,3,1]]
+    return +1
+  elseif [i,j,k] in [[2,1,3], [3,2,1], [1,3,2]]
+    return -1
+  else 
+    return 0
+  end 
+
+end 
+
 function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float64, Bcr::Float64, J::Float64, α::Float64, L::Int64)
 
   Sv = ["Sx", "Sy", "Sz"]
   Dhor = [0.0, D, 0.0] #D for horizontally oriented bonds (only has y-component)
   Dver = [α*D, 0.0, 0.0] #D for vertically oriented bonds (only has x-component)
-  B = [0.0, 0.0, Bcr]
+  B = [0.0, Bcr, 0.0]
 
   os = 0.0
   os = OpSum()
@@ -88,17 +100,17 @@ end
 
 let
 
-  L = 11 
-
   nsweeps = 100
-  maxdim = [20 for n=1:nsweeps]
+  maxdim = [15 for n=1:nsweeps]
   cutoff = 1E-10
 
   obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
 
+  L = 9 
   D = 2*pi/L 
   Bpin = 1.5
   J = -0.5*D
+  α = 0.0
 
   original_dir = "original"
   isdir(original_dir) || mkdir(original_dir)
@@ -107,8 +119,7 @@ let
   sites = siteinds("S=1/2",N)
   ψ₀ = randomMPS(sites) 
 
-  α = 1.0
-  B_range = LinRange(0.0, D, 15)
+  B_range = LinRange(0.0, D, 30)
   data = zeros(length(B_range),2)
   i=1
 
@@ -147,7 +158,7 @@ let
     pol += Magz01[j]/(L^2)
     end
     
-    data[i,1], data[i,2] = Bcr, pol
+    data[i,1], data[i,2] = Bcr, abs(pol)
     i+=1
   end
 

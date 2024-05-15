@@ -48,7 +48,7 @@ def plot_3d_quiver(x, y, z, u, v, w, xlim=None, ylim=None, zlim=None):
     ax.grid(False)    
     plt.show()
 
-file_path = 'original/0_0_Mag2D_original.csv'
+file_path = 'original/0_24_Mag2D_original.csv'
 X,Y,Z,U,V,W,A = np.loadtxt(file_path, delimiter=',', unpack=True)
 
 xmax = X.max()
