@@ -151,12 +151,12 @@ end
 let
 
   nsweeps = 50
-  maxdim = [5 for n=1:nsweeps]
+  maxdim = [20 for n=1:nsweeps]
   cutoff = 1E-10
 
   obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
 
-  L = 11 
+  L = 9 
   J = -1.0
   D = -2*J #2*pi/L 
   Bpin = 1.5
@@ -169,7 +169,7 @@ let
   sites = siteinds("S=1/2",N)
   ψ₀ = randomMPS(sites) 
 
-  B_range = LinRange(0.0, D, 10)
+  B_range = LinRange(0.0, D, 30)
   data = zeros(length(B_range),3)
   i=1
 
@@ -200,9 +200,6 @@ let
     end  
     close(f_original)
 
-    println("For field = $Bcr: Final energy of psi = $E₁")
-    println("For field = $Bcr: Final energy variance of psi = $σ₁")
-
     pol = 0.0
     for (j,mz) in enumerate(Magz01)
       pol += Magz01[j]/N
@@ -212,6 +209,11 @@ let
     
     data[i,1], data[i,2], data[i,3] = Bcr, abs(pol), Q
     i+=1
+
+    println("For field = $Bcr: Final energy of psi = $E₁")
+    println("For field = $Bcr: Final energy variance of psi = $σ₁")
+    println("For field = $Bcr: Topological charge Q = $Q")
+
   end
 
   scatter_plot = plt.scatter(data[:,1], data[:,2], c=data[:, 3], cmap="viridis")
