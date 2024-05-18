@@ -158,9 +158,9 @@ let
 
   L = 9 
   J = -1.0
-  D = -2*J #2*pi/L 
+  D = -5*J/4  
   Bpin = 1.5
-  α = 1.0
+  α = 0.0
 
   original_dir = "original"
   isdir(original_dir) || mkdir(original_dir)

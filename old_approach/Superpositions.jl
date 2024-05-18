@@ -1,19 +1,68 @@
 using ITensors, Printf, PyPlot, HDF5
 pygui(true)
-include("functions.jl")
+
+function calculate_TopoCharge(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}) 
+    
+    N = round(Int, sqrt(length(Mx)))
+  
+    coor_vec = Tuple{Tuple{Float64, Float64}, Vector{Float64}}[]  
+    triangles = Tuple{Tuple{Tuple{Float64, Float64}, Tuple{Float64, Float64}, Tuple{Float64, Float64}}, Tuple{Vector{Float64}, Vector{Float64}, Vector{Float64}}}[]
+    ρ = Float64[]
+    
+    for (j,mx) in enumerate(Mx)
+      x, y = (j-1.0) ÷ N , (j-1.0) % N 
+      M_norm = sqrt(Mx[j]^2 + My[j]^2 + Mz[j]^2)
+      M = [Mx[j], My[j], Mz[j]]/M_norm
+      push!(coor_vec, ((x, y), M)) 
+    end
+  
+    for i in 1:N-1, j in 1:N-1
+      p1, v1 = coor_vec[(i-1)*N + j]
+      p2, v2 = coor_vec[(i-1)*N + j+1]
+      p3, v3 = coor_vec[i*N + j+1]
+            
+      push!(triangles, ((p1, p2, p3),(v1, v2, v3)))  
+            
+      p4, v4 = coor_vec[i*N + j]
+      push!(triangles, ((p1, p3, p4),(v1, v3, v4)))
+    end
+  
+    for (coordinates, vectors) in triangles 
+      V1, V2, V3 = vectors  
+      L1, L2, L3 = coordinates 
+  
+      Latt1x, Latt1y = L1
+      Latt2x, Latt2y = L2
+      Latt3x, Latt3y = L3
+  
+      Latt1 = [Latt2x - Latt1x, Latt2y - Latt1y]
+      Latt2 = [Latt3x - Latt2x, Latt3y - Latt2y]
+      S = sign(Latt1[1] * Latt2[2] - Latt1[2] * Latt2[1])
+  
+      X = 1.0 + dot(V1, V2) + dot(V2, V3) + dot(V3, V1)
+      Y = dot(V1, cross(V2, V3))
+  
+      A = 2 * S * angle(X + im*Y)
+  
+      push!(ρ, A)
+    end
+    
+    Q = sum(ρ)/(4*pi)
+    return Q
+end
 
 
 let 
 
-    f = h5open("1_0_Mag2D_original.h5","r") 
+    f = h5open("old_approach/1_0_Mag2D_original.h5","r") 
     ψ₁ = read(f,"Psi_1",MPS)
     close(f)
 
-    f = h5open("1_0_Mag2D_conjugated.h5","r") 
+    f = h5open("old_approach/1_0_Mag2D_conjugated.h5","r") 
     ψ₂ = read(f,"Psi_2",MPS)
     close(f)
 
-    c₁ = 1.0#1/sqrt(2) + 0.1 
+    c₁ = 0.0 
 
     for i in 0:1:0
         ϕ = i*pi/4 
@@ -52,7 +101,7 @@ let
         plt.show()
         close(f)
 
-        Q = calculate_TopoCharge_FromMag(Mx, My, Mz)
+        Q = calculate_TopoCharge(Mx, My, Mz)
         println("step:$i, topo charge:$Q")
         @show(norm(inner(ψ₁,ψ₂)))
     end

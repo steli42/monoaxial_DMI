@@ -200,17 +200,18 @@ end
 let
 
     nsweeps = 100
-    maxdim = [1 for n = 1:nsweeps]
+    maxdim = [30 for n = 1:nsweeps]
     cutoff = 1e-10
     obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
     isAdiabatic = true
 
     δ = 0.02
     Δ = 0.1
-    Lx, Ly = 15, 15
+    Lx, Ly = 9, 9
+    α = 1.0
     J = -1.0
-    D = π/sqrt(Lx*Ly)    #using 0.65 we get a reeeaally small skyrmion so I deleted the 2 in 2pi
-    Bcr = 0.65*D^2 #0.275
+    D = -5*J/4 #2*π/sqrt(Lx*Ly)    
+    Bcr = 0.375*D #0.275*D^2 
 
     α_range₁ = 1.0:-Δ:0.2
     α_range₂ = 0.2:-δ:0.0
@@ -220,8 +221,6 @@ let
     base_dir = "kd_tree_approach"
     original_dir = joinpath(base_dir, "original")
     conjugated_dir = joinpath(base_dir, "conjugated")
-
-    # Create directories if they don't exist
     isdir(original_dir) || mkdir(original_dir)
     isdir(conjugated_dir) || mkdir(conjugated_dir)
     
@@ -271,8 +270,6 @@ let
     ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
     
     #for α in α_values_pos 
-
-        α = 1.0
 
         H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α)
         E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
