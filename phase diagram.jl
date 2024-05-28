@@ -1,7 +1,7 @@
 using ITensors, Printf, PyPlot, HDF5, LinearAlgebra
 pygui(true)
 
-function epsilon(i, j, k) # Levi-Civitta symbol
+function epsilon(i, j, k) 
 
   if [i,j,k] in [[1,2,3], [3,1,2], [2,3,1]]
     return +1
@@ -16,8 +16,8 @@ end
 function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float64, Bcr::Float64, J::Float64, α::Float64, L::Int64)
 
   Sv = ["Sx", "Sy", "Sz"]
-  Dhor = [0.0, α*D, 0.0] 
-  Dver = [D, 0.0, 0.0] 
+  Dy = [0.0, α*D, 0.0] 
+  Dx = [D, 0.0, 0.0]  # to turn Bloch to Neel just swap Dy and Dx
   B = [0.0, 0.0, Bcr]
 
   os = 0.0
@@ -31,14 +31,14 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
       if i < L && j < L   
         #Heisenberg    
         for s in Sv
-          os += J, s, n, s, n + 1 #horizontal couplings
-          os += J, s, n, s, n + L #vertical couplings
+          os += J, s, n, s, n + 1 
+          os += J, s, n, s, n + L 
         end
     
-        #DMI -- to turn Bloch to Neel just swap Dhor and Dver
+        #DMI 
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
-          os += Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1
-          os += Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
+          os += Dy[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1
+          os += Dx[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
         end
 
       elseif i == L && j < L
@@ -47,9 +47,9 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
           os += J, s, n, s, n + L 
         end
       
-        #DMI -- to turn Bloch to Neel just swap Dhor and Dver
+        #DMI 
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
-          os += Dver[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L 
+          os += Dx[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L 
         end
 
       elseif i < L && j == L
@@ -58,9 +58,9 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
           os += J, s, n, s, n + 1 
         end
       
-        #DMI -- to turn Bloch to Neel just swap Dhor and Dver
+        #DMI 
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
-          os += Dhor[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1 
+          os += Dy[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1 
         end
 
       end   
