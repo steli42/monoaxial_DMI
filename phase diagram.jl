@@ -158,18 +158,18 @@ let
 
   L = 9 
   J = -1.0
-  D = -5*J/4  
+  D = -2*J #-5*J/4  
   Bpin = 1.5
-  α = 0.0
+  α = 1.0
 
-  original_dir = "original"
+  original_dir = "spin textures"
   isdir(original_dir) || mkdir(original_dir)
   
   N = L*L
   sites = siteinds("S=1/2",N)
   ψ₀ = randomMPS(sites) 
 
-  B_range = LinRange(0.0, D, 30)
+  B_range = LinRange(0.0, D, 15)
   data = zeros(length(B_range),3)
   i=1
 
@@ -185,8 +185,8 @@ let
     Magy01 = expect(ψ₁,"Sy")
     Magz01 = expect(ψ₁,"Sz")
 
-    formatted_alpha = replace(string(round(Bcr, digits=2)), "." => "_")
-    original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
+    formatted_Bcr = replace(string(round(Bcr, digits=2)), "." => "_")
+    original_file_path = joinpath(original_dir, "$(formatted_Bcr)_Mag2D_original.csv")
     
     f_original = open(original_file_path, "w")
     for (j,mz) in enumerate(Magz01)
