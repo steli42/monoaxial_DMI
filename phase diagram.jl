@@ -98,29 +98,27 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
 
 end  
 
-function calculate_TopoCharge(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}) 
+function calculate_TopoCharge(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64}, Lx::Int64, Ly::Int64) 
     
-  N = round(Int, sqrt(length(Mx)))
-
   coor_vec = Tuple{Tuple{Float64, Float64}, Vector{Float64}}[]  
   triangles = Tuple{Tuple{Tuple{Float64, Float64}, Tuple{Float64, Float64}, Tuple{Float64, Float64}}, Tuple{Vector{Float64}, Vector{Float64}, Vector{Float64}}}[]
   ρ = Float64[]
   
   for (j,mx) in enumerate(Mx)
-    x, y = (j-1.0) ÷ N , (j-1.0) % N 
+    x, y = div(j-1.0,Lx), (j-1.0) % Lx  
     M_norm = sqrt(Mx[j]^2 + My[j]^2 + Mz[j]^2)
     M = [Mx[j], My[j], Mz[j]]/M_norm
     push!(coor_vec, ((x, y), M)) 
   end
 
-  for i in 1:N-1, j in 1:N-1
-    p1, v1 = coor_vec[(i-1)*N + j]
-    p2, v2 = coor_vec[(i-1)*N + j+1]
-    p3, v3 = coor_vec[i*N + j+1]
+  for i in 1:Lx-1, j in 1:Ly-1
+    p1, v1 = coor_vec[(i-1)*Ly + j]
+    p2, v2 = coor_vec[(i-1)*Ly + j+1]
+    p3, v3 = coor_vec[i*Ly + j+1]
           
     push!(triangles, ((p1, p2, p3),(v1, v2, v3)))  
           
-    p4, v4 = coor_vec[i*N + j]
+    p4, v4 = coor_vec[i*Ly + j]
     push!(triangles, ((p1, p3, p4),(v1, v3, v4)))
   end
 
@@ -202,7 +200,7 @@ let
     end  
     close(f_original)
 
-    Q = calculate_TopoCharge(Magx01, Magy01, Magz01)
+    Q = calculate_TopoCharge(Magx01, Magy01, Magz01, Lx, Ly)
     
     data[i,1], data[i,2], data[i,3] = Bcr, abs(pol), Q
     i+=1
