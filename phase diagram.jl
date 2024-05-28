@@ -13,7 +13,7 @@ function epsilon(i, j, k)
 
 end 
 
-function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float64, Bcr::Float64, J::Float64, α::Float64, L::Int64)
+function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float64, Bcr::Float64, J::Float64, α::Float64, Lx::Int64, Ly::Int64)
 
   Sv = ["Sx", "Sy", "Sz"]
   Dy = [0.0, α*D, 0.0] 
@@ -24,35 +24,35 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
   os = OpSum()
 
   #pairwise interactions
-  for i = 1:L   #i in x-direcion
-    for j = 1:L  #j in y-direction
-      n = L*(j-1) + i
+  for i = 1:Lx   #i in x-direcion
+    for j = 1:Ly  #j in y-direction
+      n = Lx*(j-1) + i
 
-      if i < L && j < L   
+      if i < Lx && j < Ly   
         #Heisenberg    
         for s in Sv
           os += J, s, n, s, n + 1 
-          os += J, s, n, s, n + L 
+          os += J, s, n, s, n + Lx 
         end
     
         #DMI 
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
           os += Dy[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + 1
-          os += Dx[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L
+          os += Dx[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + Lx
         end
 
-      elseif i == L && j < L
+      elseif i == Lx && j < Ly
         #Heisenberg
         for s in Sv
-          os += J, s, n, s, n + L 
+          os += J, s, n, s, n + Lx 
         end
       
         #DMI 
         for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
-          os += Dx[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + L 
+          os += Dx[a]*epsilon(a,b,c), Sv[b], n, Sv[c], n + Lx 
         end
 
-      elseif i < L && j == L
+      elseif i < Lx && j == Ly
         #Heisenberg
         for s in Sv
           os += J, s, n, s, n + 1 
@@ -69,9 +69,9 @@ function build_Hamiltonian(sites::Vector{Index{Int64}}, D::Float64, Bpin::Float6
   end
 
   #local interactions
-  for i = 1:L
-    for j = 1:L
-      n = L*(j-1) + i
+  for i = 1:Lx
+    for j = 1:Ly
+      n = Lx*(j-1) + i
 
       #Zeeman
       for a in eachindex(Sv)
@@ -150,13 +150,13 @@ end
 
 let
 
-  nsweeps = 50
-  maxdim = [20 for n=1:nsweeps]
+  nsweeps = 30
+  maxdim = [30 for n=1:nsweeps]
   cutoff = 1E-10
 
   obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
 
-  L = 9 
+  Lx, Ly = 9, 9 
   J = -1.0
   D = -2*J #-5*J/4  
   Bpin = 1.5
@@ -165,7 +165,7 @@ let
   original_dir = "spin textures"
   isdir(original_dir) || mkdir(original_dir)
   
-  N = L*L
+  N = Lx*Ly
   sites = siteinds("S=1/2",N)
   ψ₀ = randomMPS(sites) 
 
@@ -174,8 +174,8 @@ let
   i=1
 
   for Bcr in B_range  
-
-    H = build_Hamiltonian(sites, D, Bpin, Bcr, J, α, L)
+    
+    H = build_Hamiltonian(sites, D, Bpin, Bcr, J, α, Lx, Ly)
         
     E₁, ψ₁ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
 
@@ -188,22 +188,19 @@ let
     formatted_Bcr = replace(string(round(Bcr, digits=2)), "." => "_")
     original_file_path = joinpath(original_dir, "$(formatted_Bcr)_Mag2D_original.csv")
     
+    pol = 0.0
     f_original = open(original_file_path, "w")
     for (j,mz) in enumerate(Magz01)
-      @printf f_original "%f,"  (j-1.0) ÷ L
-      @printf f_original "%f,"  (j-1.0) % L
+      @printf f_original "%f,"  div(j-1.0,Lx) 
+      @printf f_original "%f,"  (j-1.0) % Lx 
       @printf f_original "%f,"  0.0
       @printf f_original "%f,"  Magx01[j]
       @printf f_original "%f,"  Magy01[j]
       @printf f_original "%f,"  Magz01[j]
       @printf f_original "%f\n" sqrt(Magx01[j]^2 + Magy01[j]^2 + Magz01[j]^2)
+      pol += Magz01[j]/N
     end  
     close(f_original)
-
-    pol = 0.0
-    for (j,mz) in enumerate(Magz01)
-      pol += Magz01[j]/N
-    end
 
     Q = calculate_TopoCharge(Magx01, Magy01, Magz01)
     
