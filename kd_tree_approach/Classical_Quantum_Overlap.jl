@@ -18,15 +18,15 @@ let
 
         formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
         
-        f = h5open("kd_tree_approach/$(formatted_alpha)_Mag2D_conjugated.h5","r") 
-        ψ₁ = read(f,"Psi_c",MPS)
+        f = h5open("kd_tree_approach/$(formatted_alpha)_Mag2D_original.h5","r") 
+        ψ₁ = read(f,"Psi",MPS)
         close(f)
 
-        f = h5open("kd_tree_approach/bonddim_25/$(formatted_alpha)_Mag2D_conjugated.h5","r") 
-        ψ₂ = read(f,"Psi_c",MPS)
+        f = h5open("kd_tree_approach/bonddim_25/$(formatted_alpha)_Mag2D_original.h5","r") 
+        ψ₂ = read(f,"Psi",MPS)
         close(f)
         
-        in = norm(inner(ψ₁',ψ₂))
+        in = norm(inner(ψ₁,ψ₂))
         @show(in) #first psi may need priming to stick to the other psi
 
         norm_val = in  

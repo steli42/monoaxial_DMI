@@ -48,15 +48,15 @@ def plot_3d_quiver(x, y, z, u, v, w, xlim=None, ylim=None, zlim=None):
     ax.grid(False)    
     plt.show()
 
-file_path = 'spin textures/1_14_Mag2D_original.csv'
+file_path = 'kd_tree_approach/bonddim_25/original/0_0_Mag2D_original.csv'
 X,Y,Z,U,V,W,A = np.loadtxt(file_path, delimiter=',', unpack=True)
 
 xmax = X.max()
 ymax = Y.max()
 zmax = Z.max()
 
-xlim = (0*(-xmax - 0.5), xmax + 0.5)
-ylim = (0*(-ymax - 0.5), ymax + 0.5)
+xlim = (-xmax - 0.5, xmax + 0.5)
+ylim = (-ymax - 0.5, ymax + 0.5)
 zlim = (-1.0, zmax + 2.0)
 
 plot_3d_quiver(X,Y,Z,U,V,W,xlim=xlim, ylim=ylim, zlim=zlim)
