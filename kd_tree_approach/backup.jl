@@ -58,9 +58,8 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
 
     Sv = ["Sx", "Sy", "Sz"] 
     B = [0.0, 0.0, Bcr]
-    e_z = [0.0, 0.0, -sign(Bcr)] #can serve as magnetisation vector for spins UP/DOWN -- m = ±1/2*e_z
-    # since we got a + in front of the Zeeman term the polarised spins are ant-ialigned to the field B
-
+    e_z = [0.0, 0.0, -sign(Bcr)] #the field is pointing down so the polarised spins are point up                                                                                                                                                                                                                                                                                                                                                
+    
     ampo = OpSum()
 
     for idx in axes(lattice_Q, 2)
@@ -199,20 +198,20 @@ end
 
 let
 
-    nsweeps = 25
-    maxdim = [25 for n = 1:nsweeps]
+    nsweeps = 100
+    maxdim = [32 for n = 1:nsweeps]
     cutoff = 1e-10
     obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
     isAdiabatic = true
 
     δ = 0.02
     Δ = 0.1
-    Lx, Ly = 15, 15
+    Lx, Ly = 7, 7
     J = -1.0
-    D = π/sqrt(Lx*Ly)  #-5*J/4  
-    Bcr = 0.275*D^2    #0.375*D
+    D = -1.0  
+    Bcr = -0.2
 
-    α_range₁ = 0.5:-Δ:0.2
+    α_range₁ = 0.8:-Δ:0.2
     α_range₂ = 0.2:-δ:0.0
     α_values_pos = unique(collect(Iterators.flatten((α_range₁,α_range₂))))
     α_values_neg = sort(map(x -> -x, α_values_pos))
@@ -268,8 +267,8 @@ let
 
     ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
     
-    for α in α_values_pos 
-
+    #for α in α_values_pos 
+        α = 0.0
         H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α)
         E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
         σ = inner(H,ψ,H,ψ) - E^2
@@ -348,61 +347,61 @@ let
 
         push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c))) 
 
-    end
+    #end
 
     ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
     ψ₀ = conj.(ψ₀)
 
-    for α in α_values_neg
+    # for α in α_values_neg
 
-        H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α)
-        E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
-        σ = inner(H,ψ,H,ψ) - E^2
+    #     H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α)
+    #     E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
+    #     σ = inner(H,ψ,H,ψ) - E^2
         
-        if isAdiabatic
-            ψ₀ = ψ
-        end
+    #     if isAdiabatic
+    #         ψ₀ = ψ
+    #     end
 
-        sx_expval = expect(ψ, "Sx")
-        sy_expval = expect(ψ, "Sy")
-        sz_expval = expect(ψ, "Sz")
+    #     sx_expval = expect(ψ, "Sx")
+    #     sy_expval = expect(ψ, "Sy")
+    #     sz_expval = expect(ψ, "Sz")
 
-        origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
-        if origin_index !== nothing
-            insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5])
-        end
+    #     origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
+    #     if origin_index !== nothing
+    #         insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5])
+    #     end
 
-        formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
-        original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
-        conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_Mag2D_conjugated.csv")
+    #     formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
+    #     original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
+    #     conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_Mag2D_conjugated.csv")
 
-        write_mag_to_csv(original_file_path, lattice_QH, sx_expval, sy_expval, sz_expval)
+    #     write_mag_to_csv(original_file_path, lattice_QH, sx_expval, sy_expval, sz_expval)
 
-        println("For alpha = $α: Final energy of psi = $E")
-        println("For alpha = $α: Final energy variance of psi = $σ")
+    #     println("For alpha = $α: Final energy of psi = $E")
+    #     println("For alpha = $α: Final energy variance of psi = $σ")
 
-        ###################################################################################
-        ψ_c = conj.(ψ)
-        E_c = inner(ψ_c', H, ψ_c)
-        σ_c = inner(H, ψ_c, H, ψ_c) - E_c^2
+    #     ###################################################################################
+    #     ψ_c = conj.(ψ)
+    #     E_c = inner(ψ_c', H, ψ_c)
+    #     σ_c = inner(H, ψ_c, H, ψ_c) - E_c^2
 
-        sx_expval_c = expect(ψ_c, "Sx")
-        sy_expval_c = expect(ψ_c, "Sy")
-        sz_expval_c = expect(ψ_c, "Sz")
+    #     sx_expval_c = expect(ψ_c, "Sx")
+    #     sy_expval_c = expect(ψ_c, "Sy")
+    #     sz_expval_c = expect(ψ_c, "Sz")
 
-        origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
-        if origin_index !== nothing
-            insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5])
-        end
+    #     origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
+    #     if origin_index !== nothing
+    #         insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5])
+    #     end
 
-        write_mag_to_csv(conjugated_file_path, lattice_QH, sx_expval_c, sy_expval_c, sz_expval_c)
+    #     write_mag_to_csv(conjugated_file_path, lattice_QH, sx_expval_c, sy_expval_c, sz_expval_c)
 
-        println("For alpha = $α: Final energy of psi conjugated = $E_c")
-        println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
+    #     println("For alpha = $α: Final energy of psi conjugated = $E_c")
+    #     println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
 
-        push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c)))
+    #     push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c)))
 
-    end
+    # end
 
     alphas, E_orig, E_conjug, Sigma_orig, Sigma_conjug = map(collect, zip(Energies...))
   
@@ -416,34 +415,34 @@ let
       end
     close(E_file)
   
-    # Create a figure and a 1x2 grid of subplots
-    fig, axs = plt.subplots(1, 2, figsize=(20, 8))  # 1 row, 2 columns of subplots
+    # # Create a figure and a 1x2 grid of subplots
+    # fig, axs = plt.subplots(1, 2, figsize=(20, 8))  # 1 row, 2 columns of subplots
   
-    # First subplot: alphas vs E_orig and E_conjug
-    axs[1].scatter(alphas, E_orig, color="none", marker="o", edgecolor="blue", label=L"$E_{\psi_0}$")
-    axs[1].scatter(alphas, E_conjug, color="red", marker="x", label=L"$E_{\text{conj}(\psi_0)}$")
-    axs[1].set_xlabel(L"$D_x/D_y = \alpha$")
-    axs[1].set_ylabel("Energy of state")
-    axs[1].legend()
+    # # First subplot: alphas vs E_orig and E_conjug
+    # axs[1].scatter(alphas, E_orig, color="none", marker="o", edgecolor="blue", label=L"$E_{\psi_0}$")
+    # axs[1].scatter(alphas, E_conjug, color="red", marker="x", label=L"$E_{\text{conj}(\psi_0)}$")
+    # axs[1].set_xlabel(L"$D_x/D_y = \alpha$")
+    # axs[1].set_ylabel("Energy of state")
+    # axs[1].legend()
   
-    # Second subplot: alphas vs abs(E_orig - E_conjug) on a log scale
-    axs[2].scatter(alphas, abs.(E_orig - E_conjug), color="none", marker="o", edgecolor="green", label=L"$|E_{\psi_0} - E_{\text{conj}(\psi_0)}|$")
-    axs[2].set_yscale("log")
-    axs[2].set_xlabel(L"$D_x/D_y = \alpha$")
-    axs[2].set_ylabel("Log of Absolute Energy Difference")
-    axs[2].legend()
-    # Adjust layout
-    plt.tight_layout()
-    plt.savefig("Energies.pdf")
+    # # Second subplot: alphas vs abs(E_orig - E_conjug) on a log scale
+    # axs[2].scatter(alphas, abs.(E_orig - E_conjug), color="none", marker="o", edgecolor="green", label=L"$|E_{\psi_0} - E_{\text{conj}(\psi_0)}|$")
+    # axs[2].set_yscale("log")
+    # axs[2].set_xlabel(L"$D_x/D_y = \alpha$")
+    # axs[2].set_ylabel("Log of Absolute Energy Difference")
+    # axs[2].legend()
+    # # Adjust layout
+    # plt.tight_layout()
+    # plt.savefig("Energies.pdf")
   
-    plt.clf()
-    plt.figure()
-    plt.scatter(alphas, Sigma_orig, color="none", marker="o", edgecolor="blue", label=L"$\sigma^2_{\psi_0}$")
-    plt.scatter(alphas, Sigma_conjug, color="red", marker="x", label=L"$\sigma^2_{\text{conj}(\psi_0)}$")
-    plt.ylabel(L"$\langle E^2 \rangle - \langle E \rangle ^2$")
-    plt.legend()
-    plt.xlabel(L"$D_x/D_y = \alpha$")
-    plt.savefig("Variances.pdf")
+    # plt.clf()
+    # plt.figure()
+    # plt.scatter(alphas, Sigma_orig, color="none", marker="o", edgecolor="blue", label=L"$\sigma^2_{\psi_0}$")
+    # plt.scatter(alphas, Sigma_conjug, color="red", marker="x", label=L"$\sigma^2_{\text{conj}(\psi_0)}$")
+    # plt.ylabel(L"$\langle E^2 \rangle - \langle E \rangle ^2$")
+    # plt.legend()
+    # plt.xlabel(L"$D_x/D_y = \alpha$")
+    # plt.savefig("Variances.pdf")
 
     return
 end

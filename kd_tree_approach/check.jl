@@ -234,6 +234,9 @@ let
     println("For alpha = $α: Final energy of psi = $E")
     println("For alpha = $α: Final energy variance of psi = $σ")
 
+    ψ_c = conj.(ψ)
+    @show norm(inner(ψ_c,ψ))
+
     return
 end
 

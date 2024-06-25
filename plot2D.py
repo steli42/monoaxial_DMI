@@ -16,8 +16,10 @@ mpl.rcParams['ytick.right'] = True
 mpl.rcParams['ytick.direction'] = 'out'
 mpl.rcParams['xtick.direction'] = 'out'
 
-cmap = plt.colormaps["viridis"]
-cmap.set_extremes(bad='k', under='k', over='r')
+cmap = plt.get_cmap("turbo")
+cmap.set_bad('k')
+cmap.set_under('k')
+cmap.set_over('r')
 
 def plot_3d_quiver(x, y, z, u, v, w, xlim=None, ylim=None, zlim=None):
     
@@ -28,7 +30,7 @@ def plot_3d_quiver(x, y, z, u, v, w, xlim=None, ylim=None, zlim=None):
     # Repeat for each body line and two head lines
     normalized_theta = np.concatenate((normalized_theta, np.repeat(normalized_theta, 2)))
     # Colormap
-    c = plt.cm.turbo(normalized_theta)
+    #c = plt.cm.turbo(normalized_theta)
     c = cmap(normalized_theta)
 
     u = u/n/2.0; v = v/n/2.0; w = w/n/2.0
@@ -36,8 +38,14 @@ def plot_3d_quiver(x, y, z, u, v, w, xlim=None, ylim=None, zlim=None):
     fig = plt.figure()#dpi = 300)
     ax = fig.add_subplot(projection = '3d')
     Q = ax.quiver(x, y, z, u, v, w, colors = c, arrow_length_ratio = 0.25)
-    cbar = fig.colorbar(Q,ax=ax, shrink=0.5)
-    cbar.set_ticks(ticks=[0,1/4,1/2,3/4,1],labels=[0,r"$\pi$/4",r"$\pi$/2",r"3$\pi$/4",r"$\pi$"])
+    
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=np.pi))
+    sm.set_array([])
+    
+    cbar = fig.colorbar(sm, ax=ax, shrink=0.5)
+    cbar.set_ticks([0, np.pi / 4, np.pi / 2, 3 * np.pi / 4, np.pi])
+    cbar.set_ticklabels([0, r"$\pi$/4", r"$\pi$/2", r"3$\pi$/4", r"$\pi$"])
+    
     #cb.minor_ticks_on()
     if xlim is not None:
         ax.set_xlim(xlim)
@@ -48,7 +56,7 @@ def plot_3d_quiver(x, y, z, u, v, w, xlim=None, ylim=None, zlim=None):
     ax.grid(False)    
     plt.show()
 
-file_path = 'kd_tree_approach/bonddim_25/original/0_0_Mag2D_original.csv'
+file_path = 'kd_tree_approach/original/0_3_Mag2D_original.csv'
 X,Y,Z,U,V,W,A = np.loadtxt(file_path, delimiter=',', unpack=True)
 
 xmax = X.max()

@@ -215,19 +215,18 @@ function calculate_topological_charge(Mx::Vector{Float64}, My::Vector{Float64}, 
 end
 
 let
-
-    nsweeps = 50
-    maxdim = [1 for n = 1:nsweeps]
-    cutoff = 1e-10
-    obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
-    isAdiabatic = true
-
     δ = 0.02
     Δ = 0.1
     Lx, Ly = 15, 15
     J = -1.0
     D = π/sqrt(Lx*Ly)
     Bcr = 0.5*D^2
+
+    nsweeps = 50
+    maxdim = [1 for n = 1:nsweeps]
+    cutoff = 1e-10
+    obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
+    isAdiabatic = true
 
     α_range₁ = 1.0:-Δ:0.2
     α_range₂ = 0.2:-δ:0.0
