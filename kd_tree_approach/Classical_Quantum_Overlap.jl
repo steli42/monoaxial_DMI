@@ -1,8 +1,6 @@
 using ITensors, Printf, PyPlot, HDF5
 pygui(true)
 
-
-
 let 
 
     δ = 0.02

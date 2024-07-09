@@ -1,5 +1,7 @@
-using NearestNeighbors, Statistics, PyPlot, ITensors, Printf, LinearAlgebra, SparseArrays
-using HDF5
+using NearestNeighbors, Statistics, PyPlot, ITensors, Printf, LinearAlgebra, SparseArrays, HDF5
+import ITensors.ITensorMPS.promote_itensor_eltype, ITensors.ITensorMPS._op_prod
+include("projmpo1.jl")
+include("dmrg1.jl")
 pygui(true)
 
 function build_lattice(Lx::Int64, Ly::Int64, geometry::String)  # construct lattice sites 
@@ -34,32 +36,70 @@ function epsilon(i, j, k)
     end
 end
 
-function fetch_initial_state(lattice_Q::Array{Float64,2}, Lx::Int64, Ly::Int64)
+function c2s(vec)
+    r = norm(vec)
+    t = acos(vec[3] / r)
+    p = sign(vec[2]) * acos(vec[1] / norm(vec[1:2]))
+    return [r, t, p]
+end
+
+function rotateMPS(psi, θϕ)
+    psi_new = copy(psi)
+    for n in eachindex(psi)
+        θ = θϕ[1, n]
+        ϕ = θϕ[2, n]
+        Ryn = exp(-1im*θ*op("Sy", siteinds(psi), n))
+        Rzn = exp(-1im*ϕ*op("Sz", siteinds(psi), n))
+        psi_new[n] = Rzn*(Ryn*psi[n])
+    end
+    return psi_new
+end
+
+function fetch_initial_state(case::String, lattice_Q::Array{Float64,2}, D, α, w, R, ecc)
     sites = siteinds("S=1/2", size(lattice_Q, 2))
-    states = ["Up" for i = 1:size(lattice_Q, 2)]
-    ψ₀ = MPS(sites,states)
+    @info "Initialize MPS:"
+    if case == "rand"
+        @info "Random..."
+        ψ₀ = randomMPS(sites)
+    elseif case == "SK"
+        @info "Skyrmion configuration..."
+        ψ₀ = MPS(sites,["Up" for s in sites])
+        θϕ = zeros(2, size(lattice_Q, 2))
 
-    for idx in axes(lattice_Q,2)
-        x,y = lattice_Q[1,idx],lattice_Q[2,idx]
-        r = sqrt(x^2 + y^2)
-        f = atan(y,x) + π/2
-        t = 2.5*π/2*(1.0-r)/sqrt(0.25*Lx^2 + 0.25*Ly^2)
+        for idx in axes(lattice_Q,2) 
+            rc = [0.0,1e-14,1e-14]
+            r = vcat(lattice_Q[:,idx], 0.0)
+            rlat = copy(r) - rc
+            rlat[1] *= 1/ecc
+            rlat[2] *= ecc
+            d, _,ϕ = c2s(rlat)
+            θsk(l) = 2 * atan(sinh(l / w), sinh(R / w))
+            θ = θsk(d)
+            #if abs(θ/π) > 0.17
+                θϕ[1, idx] += θ - π
+                θϕ[2, idx] += sign(α)*ϕ + sign(D)*π/2
+            #end
+        end 
+        ψ₀ = rotateMPS(ψ₀, θϕ)
+    end
 
-        Ryn = exp(im*t*op("Sy", siteinds(ψ₀), idx))
-        Rzn = exp(-im*f*op("Sz", siteinds(ψ₀), idx))
-        ψ₀[idx] = Rzn*(Ryn*ψ₀[idx])
-    end  
-
+    normalize!(ψ₀)
+    @info "Initialized"
     return ψ₀, sites
 end
 
 function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64,2}, lattice_C::Array{Float64,2},
-        nn_idxs_QQ::Vector{Vector{Int}}, nn_idxs_QC::Vector{Vector{Int}}, Bcr::Float64, J::Float64, D::Float64, α::Float64)
+        nn_idxs_QQ::Vector{Vector{Int}}, nn_idxs_QC::Vector{Vector{Int}}, Bcr::Float64, J::Float64, D::Float64, α::Float64,
+        alpha_axis::Int64, pinch_hole::Bool)
 
     Sv = ["Sx", "Sy", "Sz"] 
     B = [0.0, 0.0, Bcr]
-    e_z = [0.0, 0.0, -sign(Bcr)] #the field is pointing down so the polarised spins are point up                                                                                                                                                                                                                                                                                                                                                
-    
+    if Bcr == 0.0
+        e_z = [0.0, 0.0, 1.0] 
+    else
+        e_z = [0.0, 0.0, -sign(Bcr)] #the polarised spins are oriented opposite the field 
+    end         
+
     ampo = OpSum()
 
     for idx in axes(lattice_Q, 2)
@@ -80,12 +120,9 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
             # construct DMI vector -- for Bloch
             r_ij = lattice_Q[:, nn_idx] - lattice_Q[:, idx]
             r_ij_3D = vcat(r_ij, 0)   
-            if r_ij[2] == 0 && r_ij[1] != 0  
-                D_vector = D * α * r_ij_3D
-            elseif r_ij[1] == 0 && r_ij[2] != 0  
-                D_vector = D * r_ij_3D
-            end
-
+            D_vector = D * r_ij_3D
+            D_vector[alpha_axis] *= α 
+            
             # DMI interaction
             for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
                 ampo += 0.5*D_vector[a]*epsilon(a,b,c), Sv[b], idx, Sv[c], nn_idx
@@ -97,22 +134,25 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
     for idx in axes(lattice_C,2)
         for nn_idx in nn_idxs_QC[idx]
             
-            for a in eachindex(Sv)
-                if lattice_C[:,idx] == [0.0, 0.0]
-                    ampo -= 0.5*J*e_z[a], Sv[a], nn_idx  #central spin wants to be anti-aligned to the boundary
-                else
-                    ampo += 0.5*J*e_z[a], Sv[a], nn_idx  #boundary spins want to be aligned with polarised spins in the vacuum
-                end    
-            end  
+            if pinch_hole == true
+                for a in eachindex(Sv)
+                    if lattice_C[:,idx] == [0.0, 0.0]
+                        ampo -= 0.5*J*e_z[a], Sv[a], nn_idx  #central spin is to be anti-aligned to the boundary
+                    else
+                        ampo += 0.5*J*e_z[a], Sv[a], nn_idx  #boundary spins want to be aligned with polarised spins in the vacuum
+                    end    
+                end 
+            else     
+                for a in eachindex(Sv)    
+                    ampo += 0.5*J*e_z[a], Sv[a], nn_idx  #boundary spins want to be aligned with polarised spins in the vacuum       
+                end  
+            end
 
             # for Bloch
             r_ij = lattice_C[:, idx] - lattice_Q[:, nn_idx]   
             r_ij_3D = vcat(r_ij, 0.0) 
-            if r_ij[2] == 0.0 && r_ij[1] != 0.0  
-                D_vector = D * α * r_ij_3D
-            elseif r_ij[1] == 0.0 && r_ij[2] != 0.0  
-                D_vector = D * r_ij_3D
-            end
+            D_vector = D * r_ij_3D
+            D_vector[alpha_axis] *= α 
             
             for a in eachindex(Sv), b in eachindex(Sv), c in eachindex(Sv)
                 ampo += 0.5*D_vector[a]*epsilon(a,b,c)*e_z[c], Sv[b], nn_idx
@@ -198,20 +238,26 @@ end
 
 let
 
-    nsweeps = 100
-    maxdim = [32 for n = 1:nsweeps]
-    cutoff = 1e-10
-    obs = DMRGObserver(; energy_tol = 1e-7, minsweeps = 10)
+    case = "SK"  #keywords: "SK" - skyrmion or antiskyrmion based on (α,w,R,ecc); "rand" - random
+    w = 1.0
+    R = 3.0
+    ecc = 0.8
+    sweep_count = 100
+    M = 32 
+    cutoff_tol = 1e-12
+    E_tol = 1e-8
+    oplvl = 1.0
     isAdiabatic = true
-
+    pinch_hole = false #best to keep as false
     δ = 0.02
     Δ = 0.1
-    Lx, Ly = 7, 7
+    Lx, Ly = 9, 9
     J = -1.0
     D = -1.0  
-    Bcr = -0.2
-
-    α_range₁ = 0.8:-Δ:0.2
+    Bcr = -0.0000001 #in our convention Bcr < 0, instead of setting to zero better fix -1e-14 since we feed Bcr to sign() a lot
+    alpha_axis = 1
+    αₘ = -0.2
+    α_range₁ = αₘ:-Δ:0.2
     α_range₂ = 0.2:-δ:0.0
     α_values_pos = unique(collect(Iterators.flatten((α_range₁,α_range₂))))
     α_values_neg = sort(map(x -> -x, α_values_pos))
@@ -229,11 +275,14 @@ let
 
     idxs_QC = []
     idxs_QH = []
-    for lQ in axes(lattice_QH, 2)
-        if lattice_QH[:,lQ] == [0.0, 0.0]
-            push!(idxs_QH, lQ)
+
+    if pinch_hole == true
+        for lQ in axes(lattice_QH, 2)
+            if lattice_QH[:,lQ] == [0.0, 0.0]
+                push!(idxs_QH, lQ)
+            end
         end
-    end
+    end    
     lattice_Q = lattice_QH[:, setdiff(1:size(lattice_QH,2),idxs_QH)]
     for lC in axes(lattice_C, 2)
         for lQ in axes(lattice_Q, 2)
@@ -265,12 +314,27 @@ let
 
     Energies = []
 
-    ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
-    
+    ψ₀, sites = fetch_initial_state(case, lattice_Q, D, αₘ, w, R, ecc)
+
     #for α in α_values_pos 
-        α = 0.0
-        H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α)
-        E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
+        α = αₘ
+        H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α, alpha_axis, pinch_hole)
+
+        while maxlinkdim(ψ₀) < M
+            @info "$(maxlinkdim(ψ₀)), $(M): Grow bond dimension..."
+            ψ₀ = apply(H, ψ₀, maxdim=M, cutoff=0)
+        end
+        @info "target bond dimension reached..."
+    
+        normalize!(ψ₀)
+
+        sweeps = Sweeps(sweep_count)  # initialize sweeps object
+        maxdim!(sweeps, M)  # set maximum link dimension
+        cutoff!(sweeps, cutoff_tol)  
+        obs = DMRGObserver(; energy_tol = E_tol, minsweeps = 10)
+        E, ψ = dmrg1(H, ψ₀, sweeps, observer = obs, outputlevel = oplvl)
+        #E, ψ = dmrg(H, ψ₀; nsweeps = sweep_count, maxdim = M, cutoff = cutoff_tol, observer = obs, outputlevel = oplvl)
+
         σ = inner(H,ψ,H,ψ) - E^2
         
         if isAdiabatic
@@ -281,11 +345,13 @@ let
         sy_expval = expect(ψ, "Sy")
         sz_expval = expect(ψ, "Sz")
 
-        origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
-        if origin_index !== nothing
-            insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5])
+        if pinch_hole == true
+            origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
+            if origin_index !== nothing
+                insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5*sign(Bcr)])
+            end
         end
-
+            
         formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
         original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
         conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_Mag2D_conjugated.csv")
@@ -304,9 +370,11 @@ let
         sy_expval_c = expect(ψ_c, "Sy")
         sz_expval_c = expect(ψ_c, "Sz")
 
-        origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
-        if origin_index !== nothing
-            insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5])
+        if pinch_hole == true
+            origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
+            if origin_index !== nothing  
+                insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5*sign(Bcr)])
+            end
         end
 
         fig = plt.figure()
@@ -349,12 +417,11 @@ let
 
     #end
 
-    ψ₀, sites = fetch_initial_state(lattice_Q, Lx, Ly)
-    ψ₀ = conj.(ψ₀)
+    #ψ₀, sites = fetch_initial_state(case,lattice_Q, D, -αₘ, w, R, ecc)
 
     # for α in α_values_neg
 
-    #     H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α)
+    #     H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α, alpha_axis, pinch_hole)
     #     E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
     #     σ = inner(H,ψ,H,ψ) - E^2
         
@@ -366,10 +433,12 @@ let
     #     sy_expval = expect(ψ, "Sy")
     #     sz_expval = expect(ψ, "Sz")
 
-    #     origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
-    #     if origin_index !== nothing
-    #         insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5])
-    #     end
+    #     if pinch_hole == true
+    #        origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) 
+    #        if origin_index !== nothing
+    #            insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5*sign(Bcr)])
+    #        end
+    #     end  
 
     #     formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
     #     original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
@@ -389,9 +458,11 @@ let
     #     sy_expval_c = expect(ψ_c, "Sy")
     #     sz_expval_c = expect(ψ_c, "Sz")
 
-    #     origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) # finds the index of point [0,0]
-    #     if origin_index !== nothing
-    #         insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5])
+    #     if pinch_hole == true      
+    #         origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) 
+    #         if origin_index !== nothing
+    #             insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5*sign(Bcr)])
+    #         end
     #     end
 
     #     write_mag_to_csv(conjugated_file_path, lattice_QH, sx_expval_c, sy_expval_c, sz_expval_c)
