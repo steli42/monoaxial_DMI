@@ -70,14 +70,14 @@ function fetch_initial_state(case::String, lattice_Q::Array{Float64,2}, D, α, w
             rc = [0.0,1e-14,1e-14]
             r = vcat(lattice_Q[:,idx], 0.0)
             rlat = copy(r) - rc
-            rlat[1] *= 1/ecc
-            rlat[2] *= ecc
+            rlat[2] *= 1/ecc
+            rlat[1] *= ecc
             d, _,ϕ = c2s(rlat)
             θsk(l) = 2 * atan(sinh(l / w), sinh(R / w))
             θ = θsk(d)
             #if abs(θ/π) > 0.17
                 θϕ[1, idx] += θ - π
-                θϕ[2, idx] += sign(α)*ϕ + sign(D)*π/2
+                θϕ[2, idx] += sign(α)*(ϕ + sign(D)*π/2)
             #end
         end 
         ψ₀ = rotateMPS(ψ₀, θϕ)
@@ -239,11 +239,11 @@ end
 let
 
     case = "SK"  #keywords: "SK" - skyrmion or antiskyrmion based on (α,w,R,ecc); "rand" - random
-    w = 1.0
-    R = 3.0
-    ecc = 0.8
+    w = 1.5
+    R = 4.5
+    ecc = 1.0
     sweep_count = 100
-    M = 32 
+    M = 10 
     cutoff_tol = 1e-12
     E_tol = 1e-8
     oplvl = 1.0
@@ -251,12 +251,12 @@ let
     pinch_hole = false #best to keep as false
     δ = 0.02
     Δ = 0.1
-    Lx, Ly = 9, 9
+    Lx, Ly = 15, 15
     J = -1.0
-    D = -1.0  
-    Bcr = -0.0000001 #in our convention Bcr < 0, instead of setting to zero better fix -1e-14 since we feed Bcr to sign() a lot
+    D = -2*π/Lx  
+    Bcr = -0.5^2*D^2 #in our convention Bcr < 0, instead of setting to zero better fix -1e-14 since we feed Bcr to sign() a lot
     alpha_axis = 1
-    αₘ = -0.2
+    αₘ = 1.0
     α_range₁ = αₘ:-Δ:0.2
     α_range₂ = 0.2:-δ:0.0
     α_values_pos = unique(collect(Iterators.flatten((α_range₁,α_range₂))))
@@ -316,8 +316,26 @@ let
 
     ψ₀, sites = fetch_initial_state(case, lattice_Q, D, αₘ, w, R, ecc)
 
-    #for α in α_values_pos 
-        α = αₘ
+    # fig = plt.figure()
+    # ax = fig.add_subplot(projection = "3d")
+    # sx_expval = expect(ψ₀, "Sx")
+    # sy_expval = expect(ψ₀, "Sy")
+    # sz_expval = expect(ψ₀, "Sz")    
+    # for idx in axes(lattice_QH,2)
+    #     t = sz_expval
+    #     x, y, z = lattice_QH[1,idx],lattice_QH[2,idx], 0.0
+    #     vmin = minimum(t)
+    #     vmax = maximum(t)
+    #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
+    #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
+    #     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
+    #     plt.xlabel("x")
+    #     plt.ylabel("y")
+    # end
+    # ax.set_aspect("equal")
+    # plt.show()
+
+    for α in α_values_pos 
         H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α, alpha_axis, pinch_hole)
 
         while maxlinkdim(ψ₀) < M
@@ -415,64 +433,64 @@ let
 
         push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c))) 
 
-    #end
+    end
 
-    #ψ₀, sites = fetch_initial_state(case,lattice_Q, D, -αₘ, w, R, ecc)
+    ψ₀, sites = fetch_initial_state(case,lattice_Q, D, -αₘ, w, R, ecc)
 
-    # for α in α_values_neg
+    for α in α_values_neg
 
-    #     H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α, alpha_axis, pinch_hole)
-    #     E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
-    #     σ = inner(H,ψ,H,ψ) - E^2
+        H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α, alpha_axis, pinch_hole)
+        E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
+        σ = inner(H,ψ,H,ψ) - E^2
         
-    #     if isAdiabatic
-    #         ψ₀ = ψ
-    #     end
+        if isAdiabatic
+            ψ₀ = ψ
+        end
 
-    #     sx_expval = expect(ψ, "Sx")
-    #     sy_expval = expect(ψ, "Sy")
-    #     sz_expval = expect(ψ, "Sz")
+        sx_expval = expect(ψ, "Sx")
+        sy_expval = expect(ψ, "Sy")
+        sz_expval = expect(ψ, "Sz")
 
-    #     if pinch_hole == true
-    #        origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) 
-    #        if origin_index !== nothing
-    #            insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5*sign(Bcr)])
-    #        end
-    #     end  
+        if pinch_hole == true
+           origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) 
+           if origin_index !== nothing
+               insert_magnetization!(sx_expval, sy_expval, sz_expval, origin_index, [0.0, 0.0, 0.5*sign(Bcr)])
+           end
+        end  
 
-    #     formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
-    #     original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
-    #     conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_Mag2D_conjugated.csv")
+        formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
+        original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
+        conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_Mag2D_conjugated.csv")
 
-    #     write_mag_to_csv(original_file_path, lattice_QH, sx_expval, sy_expval, sz_expval)
+        write_mag_to_csv(original_file_path, lattice_QH, sx_expval, sy_expval, sz_expval)
 
-    #     println("For alpha = $α: Final energy of psi = $E")
-    #     println("For alpha = $α: Final energy variance of psi = $σ")
+        println("For alpha = $α: Final energy of psi = $E")
+        println("For alpha = $α: Final energy variance of psi = $σ")
 
-    #     ###################################################################################
-    #     ψ_c = conj.(ψ)
-    #     E_c = inner(ψ_c', H, ψ_c)
-    #     σ_c = inner(H, ψ_c, H, ψ_c) - E_c^2
+        ###################################################################################
+        ψ_c = conj.(ψ)
+        E_c = inner(ψ_c', H, ψ_c)
+        σ_c = inner(H, ψ_c, H, ψ_c) - E_c^2
 
-    #     sx_expval_c = expect(ψ_c, "Sx")
-    #     sy_expval_c = expect(ψ_c, "Sy")
-    #     sz_expval_c = expect(ψ_c, "Sz")
+        sx_expval_c = expect(ψ_c, "Sx")
+        sy_expval_c = expect(ψ_c, "Sy")
+        sz_expval_c = expect(ψ_c, "Sz")
 
-    #     if pinch_hole == true      
-    #         origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) 
-    #         if origin_index !== nothing
-    #             insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5*sign(Bcr)])
-    #         end
-    #     end
+        if pinch_hole == true      
+            origin_index = findfirst(isequal([0.0, 0.0]), eachcol(lattice_QH)) 
+            if origin_index !== nothing
+                insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5*sign(Bcr)])
+            end
+        end
 
-    #     write_mag_to_csv(conjugated_file_path, lattice_QH, sx_expval_c, sy_expval_c, sz_expval_c)
+        write_mag_to_csv(conjugated_file_path, lattice_QH, sx_expval_c, sy_expval_c, sz_expval_c)
 
-    #     println("For alpha = $α: Final energy of psi conjugated = $E_c")
-    #     println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
+        println("For alpha = $α: Final energy of psi conjugated = $E_c")
+        println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
 
-    #     push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c)))
+        push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c)))
 
-    # end
+    end
 
     alphas, E_orig, E_conjug, Sigma_orig, Sigma_conjug = map(collect, zip(Energies...))
   
