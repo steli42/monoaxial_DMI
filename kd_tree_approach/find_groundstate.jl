@@ -1,8 +1,9 @@
-using NearestNeighbors, Statistics, PyPlot, ITensors, Printf, LinearAlgebra, SparseArrays, HDF5
+using NearestNeighbors, Statistics, ITensors, Printf, LinearAlgebra, SparseArrays, HDF5
 import ITensors.ITensorMPS.promote_itensor_eltype, ITensors.ITensorMPS._op_prod
+#using PyPlot
 include("projmpo1.jl")
 include("dmrg1.jl")
-pygui(true)
+#pygui(true)
 
 function build_lattice(Lx::Int64, Ly::Int64, geometry::String)  # construct lattice sites 
     if geometry == "rectangular"
