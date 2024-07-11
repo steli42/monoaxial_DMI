@@ -243,19 +243,19 @@ let
     R = 4.5
     ecc = 1.0
     sweep_count = 100
-    M = 10 
+    M = 32 
     cutoff_tol = 1e-12
     E_tol = 1e-8
     oplvl = 1.0
     isAdiabatic = true
     pinch_hole = false #best to keep as false
     δ = 0.02
-    Δ = 0.1
+    Δ = 0.2
     Lx, Ly = 15, 15
     J = -1.0
     D = -2*π/Lx  
     Bcr = -0.5^2*D^2 #in our convention Bcr < 0, instead of setting to zero better fix -1e-14 since we feed Bcr to sign() a lot
-    alpha_axis = 1
+    alpha_axis = 1  
     αₘ = 1.0
     α_range₁ = αₘ:-Δ:0.2
     α_range₂ = 0.2:-δ:0.0
@@ -336,6 +336,7 @@ let
     # plt.show()
 
     for α in α_values_pos 
+
         H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α, alpha_axis, pinch_hole)
 
         while maxlinkdim(ψ₀) < M
@@ -395,22 +396,22 @@ let
             end
         end
 
-        fig = plt.figure()
-        ax = fig.add_subplot(projection = "3d")
+        # fig = plt.figure()
+        # ax = fig.add_subplot(projection = "3d")
             
-        for idx in axes(lattice_QH,2)
-            t = sz_expval
-            x, y, z = lattice_QH[1,idx],lattice_QH[2,idx], 0.0
-            vmin = minimum(t)
-            vmax = maximum(t)
-            cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
-            norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
-            ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
-            plt.xlabel("x")
-            plt.ylabel("y")
-        end
-        ax.set_aspect("equal")
-        plt.show()
+        # for idx in axes(lattice_QH,2)
+        #     t = sz_expval
+        #     x, y, z = lattice_QH[1,idx],lattice_QH[2,idx], 0.0
+        #     vmin = minimum(t)
+        #     vmax = maximum(t)
+        #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
+        #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
+        #     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
+        #     plt.xlabel("x")
+        #     plt.ylabel("y")
+        # end
+        # ax.set_aspect("equal")
+        # plt.show()
     
         Q = calculate_topological_charge(sx_expval, sy_expval, sz_expval, lattice_QH, Lx, Ly)
         println("The topological charge Q is: $Q")
@@ -440,7 +441,22 @@ let
     for α in α_values_neg
 
         H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α, alpha_axis, pinch_hole)
-        E, ψ = dmrg(H, ψ₀; nsweeps, maxdim, cutoff, observer = obs)
+
+        while maxlinkdim(ψ₀) < M
+            @info "$(maxlinkdim(ψ₀)), $(M): Grow bond dimension..."
+            ψ₀ = apply(H, ψ₀, maxdim=M, cutoff=0)
+        end
+        @info "target bond dimension reached..."
+    
+        normalize!(ψ₀)
+
+        sweeps = Sweeps(sweep_count)  # initialize sweeps object
+        maxdim!(sweeps, M)  # set maximum link dimension
+        cutoff!(sweeps, cutoff_tol)  
+        obs = DMRGObserver(; energy_tol = E_tol, minsweeps = 10)
+        E, ψ = dmrg1(H, ψ₀, sweeps, observer = obs, outputlevel = oplvl)
+        #E, ψ = dmrg(H, ψ₀; nsweeps = sweep_count, maxdim = M, cutoff = cutoff_tol, observer = obs, outputlevel = oplvl)
+
         σ = inner(H,ψ,H,ψ) - E^2
         
         if isAdiabatic
@@ -504,34 +520,34 @@ let
       end
     close(E_file)
   
-    # # Create a figure and a 1x2 grid of subplots
-    # fig, axs = plt.subplots(1, 2, figsize=(20, 8))  # 1 row, 2 columns of subplots
+    # Create a figure and a 1x2 grid of subplots
+    fig, axs = plt.subplots(1, 2, figsize=(20, 8))  # 1 row, 2 columns of subplots
   
-    # # First subplot: alphas vs E_orig and E_conjug
-    # axs[1].scatter(alphas, E_orig, color="none", marker="o", edgecolor="blue", label=L"$E_{\psi_0}$")
-    # axs[1].scatter(alphas, E_conjug, color="red", marker="x", label=L"$E_{\text{conj}(\psi_0)}$")
-    # axs[1].set_xlabel(L"$D_x/D_y = \alpha$")
-    # axs[1].set_ylabel("Energy of state")
-    # axs[1].legend()
+    # First subplot: alphas vs E_orig and E_conjug
+    axs[1].scatter(alphas, E_orig, color="none", marker="o", edgecolor="blue", label=L"$E_{\psi_0}$")
+    axs[1].scatter(alphas, E_conjug, color="red", marker="x", label=L"$E_{\text{conj}(\psi_0)}$")
+    axs[1].set_xlabel(L"$D_x/D_y = \alpha$")
+    axs[1].set_ylabel("Energy of state")
+    axs[1].legend()
   
-    # # Second subplot: alphas vs abs(E_orig - E_conjug) on a log scale
-    # axs[2].scatter(alphas, abs.(E_orig - E_conjug), color="none", marker="o", edgecolor="green", label=L"$|E_{\psi_0} - E_{\text{conj}(\psi_0)}|$")
-    # axs[2].set_yscale("log")
-    # axs[2].set_xlabel(L"$D_x/D_y = \alpha$")
-    # axs[2].set_ylabel("Log of Absolute Energy Difference")
-    # axs[2].legend()
-    # # Adjust layout
-    # plt.tight_layout()
-    # plt.savefig("Energies.pdf")
+    # Second subplot: alphas vs abs(E_orig - E_conjug) on a log scale
+    axs[2].scatter(alphas, abs.(E_orig - E_conjug), color="none", marker="o", edgecolor="green", label=L"$|E_{\psi_0} - E_{\text{conj}(\psi_0)}|$")
+    axs[2].set_yscale("log")
+    axs[2].set_xlabel(L"$D_x/D_y = \alpha$")
+    axs[2].set_ylabel("Log of Absolute Energy Difference")
+    axs[2].legend()
+    # Adjust layout
+    plt.tight_layout()
+    plt.savefig("Energies.pdf")
   
-    # plt.clf()
-    # plt.figure()
-    # plt.scatter(alphas, Sigma_orig, color="none", marker="o", edgecolor="blue", label=L"$\sigma^2_{\psi_0}$")
-    # plt.scatter(alphas, Sigma_conjug, color="red", marker="x", label=L"$\sigma^2_{\text{conj}(\psi_0)}$")
-    # plt.ylabel(L"$\langle E^2 \rangle - \langle E \rangle ^2$")
-    # plt.legend()
-    # plt.xlabel(L"$D_x/D_y = \alpha$")
-    # plt.savefig("Variances.pdf")
+    plt.clf()
+    plt.figure()
+    plt.scatter(alphas, Sigma_orig, color="none", marker="o", edgecolor="blue", label=L"$\sigma^2_{\psi_0}$")
+    plt.scatter(alphas, Sigma_conjug, color="red", marker="x", label=L"$\sigma^2_{\text{conj}(\psi_0)}$")
+    plt.ylabel(L"$\langle E^2 \rangle - \langle E \rangle ^2$")
+    plt.legend()
+    plt.xlabel(L"$D_x/D_y = \alpha$")
+    plt.savefig("Variances.pdf")
 
     return
 end
