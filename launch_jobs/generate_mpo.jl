@@ -180,16 +180,6 @@ function generate_full_MPO(sites, 𝐦, p, lat_mat, latcs_aux, nn_idxs, nn_pbc_i
     end
 
     # onsite terms
-    for (id, nn_idx) in zip(eachindex(sites), nn_idxs)
-        if length(nn_idx)<maximum(length.(nn_idxs))  # if neighbors are missing, then it's the system's boundary
-            for (b, s) in zip(p["B_boundary"], Sv)
-                # println("add term $b to $id")
-                ampo += b, s, id
-            end
-        end
-    end
-
-    # onsite terms
     for (idal, (lat_aux, nns_pbc_al)) in enumerate(zip(latcs_aux, nn_pbc_idxs))
         for (id1, nns) in enumerate(nns_pbc_al)
             for id2 in nns
@@ -245,9 +235,9 @@ function generate_pinning_zeeman_MPO(sites, p, lat_mat, latcs_aux, nn_idxs, nn_p
 
     # onsite terms
     B0_loc_1 = convert(Vector{Float64}, p["B0_loc_1"])
-    B0_loc_2 = convert(Vector{Float64}, p["B0_loc_2"])
+    # B0_loc_2 = convert(Vector{Float64}, p["B0_loc_2"])
     for id in eachindex(sites)
-        for B0_loc in [B0_loc_1, B0_loc_2]
+        for B0_loc in [B0_loc_1]
             dir = lat_mat[:, id] .- B0_loc
             amp = 1/sqrt(2*π*p["B0_sigma"]^2)*exp(-0.5*norm(dir)^2/p["B0_sigma"]^2)
             # amp = exp(-p["B0_sigma"]*norm(dir))
@@ -403,7 +393,8 @@ function generate_zeeman_gradient_MPO(sites, p, lat_mat)
     xmax = maximum(lat_mat[1,:])
     int = xmax - xmin
     for id in eachindex(sites)
-        Bgrad = [0.0,0.0,(lat_mat[1, id]-xmin)/int]
+        # Bgrad = [0.0,0.0,(lat_mat[1, id]-xmin)/int]
+        Bgrad = [0.0,0.0,lat_mat[1, id]/xmax]
         # @show Bgrad
         for (b, s) in zip(Bgrad, Sv)
             if abs(b) > 1e-6

@@ -184,12 +184,14 @@ function time_evolve()
     H = generate_full_MPO(sites, 𝐦, p, lattice, aux_lattices, nn_idxs, nn_pbc_idxs)
     @info "MPO's generated."
 
+    Hpin = generate_pinning_zeeman_MPO(sites, p, lattice, aux_lattices, nn_idxs, nn_pbc_idxs)
+
     normalize!(psi0)
     ene = real(inner(psi0', H, psi0))
     println("Energy: $ene")
 
     sweeps = Sweeps(p["sweeps"])  # initialize sweeps object
-    maxdim!(sweeps, p["M"])  # set maximum link dimension
+    maxdim!(sweeps, 1)  # fix maximum link dimension to one
     cutoff!(sweeps, p["cutoff_tol"])  # set maximum link dimension
     obs = DMRGObserver(; energy_tol=p["energy_tol"])
 
@@ -197,21 +199,15 @@ function time_evolve()
 
     Hgrad = generate_zeeman_gradient_MPO(sites, p, lattice)
     
-    # while maxlinkdim(psi) < p["M"]
-    #     @info "$(maxlinkdim(psi)), $(p["M"]): Grow bond dimension..."
-    #     psi = apply(H, psi, maxdim=p["M"], cutoff=0)
-    # end
-    # @info "target bond dimension reached..."
-    # energy, psi = dmrg1(H, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
+    energy, psi = dmrg1(H+Hpin, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
 
-    amp = 0.2
-    H = H + amp*Hgrad
-    
     lobs = [expect(psi, s) for s in ["Sx", "Sy", "Sz"]]
     spins = reduce(vcat, transpose.(lobs))
     df = lobs_to_df(lattice, aux_lattices, spins, 𝐦, p)
     CSV.write("$(p["io_dir"])/$(p["csv_mps"])", df)
 
+    amp = 0.1
+    H = H + amp*Hgrad
 
     step(; sweep) = sweep
     current_time(; current_time) = current_time
@@ -225,7 +221,7 @@ function time_evolve()
         "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin
     )
 
-    T = 1/amp
+    T = 16
     psiT = tdvp(
         H,
         -T * im,
