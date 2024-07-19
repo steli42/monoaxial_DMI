@@ -164,3 +164,8 @@ cython_debug/
 launch_jobs/out
 *.mp4
 *.txt
+*.h5
+*.csv
+*.json
+*.png
+*.DS_Store

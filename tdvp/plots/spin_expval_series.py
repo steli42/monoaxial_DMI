@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 plt.rc('text', usetex=True)
 plt.rc('text.latex',preamble='\\usepackage{bm}')
 fs = 1000
-# fs = 1390
+fs = 1390
 # fs = 2000
-in_dir = 'launch_jobs/out'
+in_dir = 'tdvp/out'
 mkr = 's'
 my_dpi = 300
 ffmt = ''

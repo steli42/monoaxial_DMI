@@ -5,7 +5,7 @@ import uuid
 
 from aux import find_files as ff
 
-folder = 'launch_jobs/out/series'
+folder = 'tdvp/out/series'
 string = '*mag.png'
 fns = ff.find_files(f'{string}', folder)
 

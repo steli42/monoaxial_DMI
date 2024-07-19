@@ -148,7 +148,7 @@ function time_evolve()
             θ = θsk(d)
             if abs(θ/π) > 0.17
                 θϕ[1, i] += θ
-                θϕ[2, i] += ϕ + sign(p["D"][3])*π/2
+                θϕ[2, i] += p["phi_sign"]*ϕ + sign(p["D"][3])*π/2
             end
         end
         psi0 = rotateMPS(vac, θϕ)
@@ -167,7 +167,7 @@ function time_evolve()
     sites = siteinds(psi0)
 
     𝐦 = zeros(Float64, 3, length(aux_lattices), size(aux_lattices[1], 2))
-    if p["boundary_conditions"] == "classical_environment" || p["boundary_conditions"] == "ce_x_pbc_y"
+    if p["boundary_conditions"] == "classical_environment"
         𝐦[3, :, :] .= -1.0  # all environment spins point towards ê₃
         𝐦 .*= 2 * p["snorm"]  # the factor 2 compensates that we sum only once over lattice pairs
     end
@@ -200,6 +200,11 @@ function time_evolve()
     Hgrad = generate_zeeman_gradient_MPO(sites, p, lattice)
     
     energy, psi = dmrg1(H+Hpin, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
+    @show inner(psi', H, psi)
+
+    f = h5open("$(p["io_dir"])/$(p["hdf5_final"])", "w")
+    write(f, "psi", psi)
+    close(f)
 
     lobs = [expect(psi, s) for s in ["Sx", "Sy", "Sz"]]
     spins = reduce(vcat, transpose.(lobs))
@@ -221,18 +226,21 @@ function time_evolve()
         "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin
     )
 
-    T = 16
+    T = 5/amp
     psiT = tdvp(
         H,
         -T * im,
         psi;
-        nsteps=100,
+        nsteps=p["tdvp_sweeps"],
         maxdim=p["M"],
         cutoff=p["cutoff_tol"],
         normalize=true,
-        reverse_step=false,
+        reverse_step=true,
         outputlevel=1,
-        (step_observer!)=obs
+        (step_observer!)=obs,
+        order=p["tdvp_order"],
+        # updater_backend="applyexp",
+        # maxiter=10
     )
 
     df = lobs_arr_to_df(lattice, aux_lattices, obs.spin, 𝐦, p; T=T, lbl="t")
