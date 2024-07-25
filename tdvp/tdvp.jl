@@ -226,7 +226,7 @@ function time_evolve()
         "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin
     )
 
-    T = 5/amp
+    T = 10/amp
     psiT = tdvp(
         H,
         -T * im,

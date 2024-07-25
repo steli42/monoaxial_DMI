@@ -8,7 +8,7 @@
     "initial_MPS===": "SKX",
     "initial_MPS=": "Dn",
     "initial_MPS==": "rand",
-    "phi_sign": -1.0,
+    "phi_sign": 1.0,
     "SKX_w": 1.0,
     "SKX_R": 3.0,
     "SKX_e": 0.8,
@@ -21,7 +21,7 @@
     "N_SK": 1,
     "Nx": 13,
     "Ny": 13,
-    "M": 16,
+    "M": 32,
     "sweeps": 500,
     "tdvp_sweeps": 100,
     "tdvp_order": 1,
@@ -34,8 +34,8 @@
     "lattice_C=": "triangular_flake",
     "lattice": "square",
     "lattice_C": "square",
-    "hdf5_final": "ask.h5",
-    "hdf5_initial": "out/ask.h5",
+    "hdf5_final": "sk.h5",
+    "hdf5_initial": "out/sk.h5",
     "csv_mps": "state_mps.csv",
     "outputlevel": 1
 }
