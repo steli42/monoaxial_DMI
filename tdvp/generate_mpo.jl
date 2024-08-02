@@ -403,8 +403,7 @@ function generate_zeeman_gradient_MPO(sites, p, lat_mat)
     int = xmax - xmin
     for id in eachindex(sites)
         # Bgrad = [0.0,0.0,(lat_mat[1, id]-xmin)/int]
-        Bgrad = [0.0,0.0,lat_mat[1, id]/xmax]
-        # @show Bgrad
+        Bgrad = [0.0,0.0,lat_mat[2, id]/xmax]
         for (b, s) in zip(Bgrad, Sv)
             if abs(b) > 1e-6
                 ampo += b, s, id
