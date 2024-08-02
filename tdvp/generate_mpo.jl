@@ -289,6 +289,15 @@ function rotateMPS(psi, θϕ)
     return psi_new
 end
 
+function apply_Z(psi)
+    psi_new = copy(psi)
+    for n in eachindex(psi_new)
+        Z = op("Sz", siteinds(psi_new), n)
+        psi_new[n] = noprime(Z*psi_new[n])
+    end
+    return psi_new
+end
+
 function rotateMPS_old(psi, θϕ)
     for n in eachindex(psi)
         θ = θϕ[1, n]

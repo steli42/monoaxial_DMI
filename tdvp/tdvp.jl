@@ -206,6 +206,9 @@ function time_evolve()
     write(f, "psi", psi)
     close(f)
 
+    # psi_anti = conj.(apply_Z(psi))
+    # psi = psi_anti
+
     lobs = [expect(psi, s) for s in ["Sx", "Sy", "Sz"]]
     spins = reduce(vcat, transpose.(lobs))
     df = lobs_to_df(lattice, aux_lattices, spins, 𝐦, p)
