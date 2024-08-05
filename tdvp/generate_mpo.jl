@@ -398,12 +398,12 @@ function generate_zeeman_gradient_MPO(sites, p, lat_mat)
     Sv = ["Sx", "Sy", "Sz"]
 
     # onsite terms
-    xmin = minimum(lat_mat[1,:])
-    xmax = maximum(lat_mat[1,:])
-    int = xmax - xmin
+    ymin = minimum(lat_mat[2,:])
+    ymax = maximum(lat_mat[2,:])
+    int = ymax - ymin
     for id in eachindex(sites)
         # Bgrad = [0.0,0.0,(lat_mat[1, id]-xmin)/int]
-        Bgrad = [0.0,0.0,lat_mat[2, id]/xmax]
+        Bgrad = [0.0,0.0,lat_mat[2, id]/ymax]
         for (b, s) in zip(Bgrad, Sv)
             if abs(b) > 1e-6
                 ampo += b, s, id
