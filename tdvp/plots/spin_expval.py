@@ -5,6 +5,7 @@ import numpy as np
 from aux import find_files as ff
 from aux import export_legend as el
 from aux import c2s
+from aux.hsv import hsv2rgb
 from matplotlib.pyplot import cm, colorbar
 import matplotlib.colors as mcolors
 from mpl_toolkits.axes_grid1 import ImageGrid
@@ -14,7 +15,7 @@ import matplotlib.pyplot as plt
 plt.rc('text', usetex=True)
 plt.rc('text.latex',preamble='\\usepackage{bm}')
 fs = 1000
-fs = 1390
+fs = 1070
 # fs = 2000
 in_dir = 'tdvp/out'
 mkr = 's'
@@ -72,10 +73,21 @@ for (idfn, fn) in enumerate(fns):
     #     S = (Sx**2 + Sy**2 + Sz**2)**(1/2)
     #     imag = ax.plot(x, S)
 
-    rtp = np.asarray([c2s.to_spherical(*v) for v in zip(Sx,Sy,Sz)])
+    # rtp = np.asarray([c2s.to_spherical(*v) for v in zip(Sx,Sy,Sz)])
     # print(min(abs(vabs-S)/max(vabs-S)))
-    imag = ax.scatter(x, y, cmap='RdBu_r', c=Sz, marker=mkr, s=90, vmin=-vabs, vmax=vabs)
-    ax.quiver(x, y, Sx, Sy, units='xy', width=0.07, scale=vabs, pivot='middle', color='white')
+
+    normdev = abs(vabs-S)
+    normdev = normdev/vabs
+    print(min(normdev), max(normdev))
+
+    # imag = ax.scatter(x, y, cmap='RdBu_r', c=Sz, marker=mkr, s=90, vmin=-vabs, vmax=vabs)
+    for (xi,yi,sx,sy,sz,ds) in zip(x,y,Sx,Sy,Sz,normdev):
+        sn = (sx**2+sy**2+sz**2)**0.5
+        color = hsv2rgb([sx/sn,sy/sn,sz/sn],0,1)
+        ax.scatter(xi, yi, c=1-ds, cmap='Grays', marker='s', s=90, vmin=0, vmax=vabs, edgecolor='None')
+        # imag = ax.scatter(xi, yi, facecolor=color, edgecolor='None', marker='o', s=90*0.0)
+        ax.quiver(xi, yi, sx, sy, units='xy', width=0.08, scale=vabs*1, pivot='middle', color=color)
+
     mmy = np.asarray([np.min(y),np.max(y)])
     mmx = np.asarray([np.min(x),np.max(x)])
     ax.set_ylim(1.5*mmy)
@@ -86,17 +98,17 @@ for (idfn, fn) in enumerate(fns):
     # print(Ox**2 + Oy**2 + Oz**2)
     # Ox, Oy, Oz = Sx, Sy, Sz
     # print(Ox, Oy, Oz)
-    axins = inset_axes(
-        ax,
-        width="2%",  # width: 5% of parent_bbox width
-        height="75%",  # height: 50%
-        loc="center right",
-        bbox_to_anchor=(0., 0, 0.92, 1),
-        bbox_transform=ax.transAxes,
-        borderpad=0
-    )
-    cbar = fig.colorbar(imag, cax=axins, orientation = 'vertical')
-    cbar.ax.set_title('$\\langle{\\hat S_{i,z}}\\rangle$')
+    # axins = inset_axes(
+    #     ax,
+    #     width="2%",  # width: 5% of parent_bbox width
+    #     height="75%",  # height: 50%
+    #     loc="center right",
+    #     bbox_to_anchor=(0., 0, 0.92, 1),
+    #     bbox_transform=ax.transAxes,
+    #     borderpad=0
+    # )
+    # cbar = fig.colorbar(imag, cax=axins, orientation = 'vertical')
+    # cbar.ax.set_title('$\\langle{\\hat S_{i,z}}\\rangle$')
     # ax.plot([-10,10], [0,0], color='black')
     plt.savefig(f'{out_dir}/mag{ffmt}', pad_inches=0, bbox_inches='tight', dpi=my_dpi)
 
