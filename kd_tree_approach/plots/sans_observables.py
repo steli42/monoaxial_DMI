@@ -58,15 +58,9 @@ def plot_structure_factors(data_dir, output_image):
     plt.close(fig)
 
 def calculate_differential_cross_section(data_dir):
-    
     Sxx = read_csv_data(os.path.join(data_dir, "S_{xx}.csv"))[2]
     Sxy = read_csv_data(os.path.join(data_dir, "S_{xy}.csv"))[2]
-    Sxz = read_csv_data(os.path.join(data_dir, "S_{xz}.csv"))[2]
-    Syx = read_csv_data(os.path.join(data_dir, "S_{yx}.csv"))[2]
     Syy = read_csv_data(os.path.join(data_dir, "S_{yy}.csv"))[2]
-    Syz = read_csv_data(os.path.join(data_dir, "S_{yz}.csv"))[2]
-    Szx = read_csv_data(os.path.join(data_dir, "S_{zx}.csv"))[2]
-    Szy = read_csv_data(os.path.join(data_dir, "S_{zy}.csv"))[2]
     Szz = read_csv_data(os.path.join(data_dir, "S_{zz}.csv"))[2]
 
     qx, qy, _ = read_csv_data(os.path.join(data_dir, "S_{xx}.csv"))
@@ -79,14 +73,18 @@ def calculate_differential_cross_section(data_dir):
             qx_val = qx[i, j]
             qy_val = qy[i, j]
             q_squared_val = q_squared[i, j]
+
             if q_squared_val == 0:
-                continue  
+                # Handle the q = 0 case separately
+                sigma[i, j] = Szz[i, j] + Sxx[i, j] + Syy[i, j]
+            else:
+                qx2_over_q2 = (qx_val ** 2) / q_squared_val
+                qy2_over_q2 = (qy_val ** 2) / q_squared_val
+                qxqy_over_q2 = (qx_val * qy_val) / q_squared_val
 
-            qx2_over_q2 = (qx_val ** 2) / q_squared_val
-            qy2_over_q2 = (qy_val ** 2) / q_squared_val
-            qxqy_over_q2 = (qx_val * qy_val) / q_squared_val
-
-            sigma[i, j] = (Sxx[i, j] * (1 - qx2_over_q2) + Syy[i, j] * (1 - qy2_over_q2) - 2 * qxqy_over_q2 * Sxy[i, j])
+                sigma[i, j] = (Szz[i, j] + Sxx[i, j] * (1 - qx2_over_q2) 
+                               + Syy[i, j] * (1 - qy2_over_q2) 
+                               - 2 * qxqy_over_q2 * Sxy[i, j])
 
     return qx, qy, sigma
 
@@ -112,11 +110,9 @@ if __name__ == "__main__":
 
     data_dir = "./out"  
     output_image = "./out/structure_factors.jpg"  
-
     plot_structure_factors(data_dir, output_image)
-
+    
     output_image = "./out/cross_section.jpg" 
-
     plot_differential_cross_section(data_dir, output_image)
 
     #run from kd_tree_approach folder like: python plots/sans_observables.py

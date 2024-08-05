@@ -76,15 +76,16 @@ let
   Ψ = c₁ * exp(im * ϕ) * ψ₂ + sqrt(1 - c₁^2) * ψ₁
   lattice = build_lattice(Lx, Ly, "rectangular")
 
-  for (op1, op2, plot_title) in elements
-    qx_mesh, qy_mesh, S_values = calculate_StructureFactor(lattice, Ψ, q_max, q_step, op1, op2)
+    for (op1, op2, plot_title) in elements
+        @info "Calculating structure factor $plot_title ..."
+        qx_mesh, qy_mesh, S_values = calculate_StructureFactor(lattice, Ψ, q_max, q_step, op1, op2)
 
-    # Save data to CSV files
-    csv_filename = joinpath(output_dir,"$(plot_title).csv")
-    open(csv_filename, "w") do file
-        writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values)), ',')
+        # Save data to CSV files
+        csv_filename = joinpath(output_dir,"$(plot_title).csv")
+        open(csv_filename, "w") do file
+            writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values)), ',')
+        end
+
+        println("Data for $plot_title saved to $csv_filename")
     end
-
-    println("Data for $plot_title saved to $csv_filename")
-  end
 end
