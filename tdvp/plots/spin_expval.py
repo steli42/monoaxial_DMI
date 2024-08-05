@@ -15,9 +15,10 @@ import matplotlib.pyplot as plt
 plt.rc('text', usetex=True)
 plt.rc('text.latex',preamble='\\usepackage{bm}')
 fs = 1000
-fs = 1070
+fs = 1070  # 13 X 13
+fs = 1690  # 21 x 21
 # fs = 2000
-in_dir = 'tdvp/out'
+in_dir = 'out'
 mkr = 's'
 my_dpi = 300
 ffmt = ''

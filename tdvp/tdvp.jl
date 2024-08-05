@@ -150,7 +150,7 @@ function time_evolve()
             θ = θsk(d)
             if abs(θ/π) > 0.17
                 θϕ[1, i] += θ
-                θϕ[2, i] += p["phi_sign"]*ϕ - sign(p["D"][3])*sign(p["B"][3])*π/2
+                θϕ[2, i] += p["phi_sign"]*(ϕ - sign(p["D"][3])*sign(p["B"][3])*π/2)
             end
         end
         psi0 = rotateMPS(vac, θϕ)
