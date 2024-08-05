@@ -15,7 +15,9 @@ import matplotlib.pyplot as plt
 plt.rc('text', usetex=True)
 plt.rc('text.latex',preamble='\\usepackage{bm}')
 fs = 1000
-fs = 1070
+fs = 1070  # 13 X 13
+fs = 1230  # 15 X 15
+# fs = 1690  # 21 x 21
 # fs = 2000
 in_dir = 'out'
 mkr = 's'

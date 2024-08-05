@@ -217,7 +217,7 @@ function time_evolve()
     df = lobs_to_df(lattice, aux_lattices, spins, 𝐦, p)
     CSV.write("$(p["io_dir"])/$(p["csv_mps"])", df)
 
-    amp = 0.1
+    amp = 0.075
     H = H + amp*Hgrad
 
     step(; sweep) = sweep
