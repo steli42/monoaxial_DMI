@@ -3,7 +3,7 @@ import numpy as np
 import os, shutil
 import uuid
 
-from aux import find_files as ff
+from auxi import find_files as ff
 
 folder = 'tdvp/out/series'
 string = '*mag.png'
