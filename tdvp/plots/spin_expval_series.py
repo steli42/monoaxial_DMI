@@ -2,10 +2,10 @@
 # coding: utf-8
 import numpy as np
 
-from aux import find_files as ff
-from aux import export_legend as el
-from aux import c2s
-from aux.hsv import hsv2rgb
+from auxi import find_files as ff
+from auxi import export_legend as el
+from auxi import c2s
+from auxi.hsv import hsv2rgb
 from matplotlib.pyplot import cm, colorbar
 import matplotlib.colors as mcolors
 from mpl_toolkits.axes_grid1 import ImageGrid

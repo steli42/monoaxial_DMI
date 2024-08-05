@@ -170,3 +170,5 @@ launch_jobs/out
 *.png
 *.DS_Store
 *.gif
+*.DS_Store
+*.toml

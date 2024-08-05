@@ -126,7 +126,9 @@ function time_evolve()
         vac = MPS(sites, ["Up" for s in sites])
 
         yc = mean(lattice[2, :])  # average y position
-        θϕ = zeros(2, size(lattice, 2))
+        θϕ = ones(2, size(lattice, 2))
+        θϕ[1,:] .= π
+        θϕ[2,:] .= 0
         xs = unique(lattice[1, abs.(lattice[2, :] .- yc).<0.51])  # all x positions
         xmm = extrema(xs)
         Lx = xmm[2] - xmm[1] + 1
@@ -148,7 +150,7 @@ function time_evolve()
             θ = θsk(d)
             if abs(θ/π) > 0.17
                 θϕ[1, i] += θ
-                θϕ[2, i] += p["phi_sign"]*ϕ + sign(p["D"][3])*π/2
+                θϕ[2, i] += p["phi_sign"]*ϕ - sign(p["D"][3])*sign(p["B"][3])*π/2
             end
         end
         psi0 = rotateMPS(vac, θϕ)
@@ -174,6 +176,7 @@ function time_evolve()
     if occursin("hole", p["lattice"])
         𝐦[3, end, :] *= -1
     end
+    𝐦[3, :, :] *= sign(p["B"][3])
 
     lobs = [expect(psi0, s) for s in ["Sx", "Sy", "Sz"]]
     spins = reduce(vcat, transpose.(lobs))
