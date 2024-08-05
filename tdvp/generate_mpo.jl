@@ -289,6 +289,15 @@ function rotateMPS(psi, θϕ)
     return psi_new
 end
 
+function apply_Z(psi)
+    psi_new = copy(psi)
+    for n in eachindex(psi_new)
+        Z = op("Sz", siteinds(psi_new), n)
+        psi_new[n] = noprime(Z*psi_new[n])
+    end
+    return psi_new
+end
+
 function rotateMPS_old(psi, θϕ)
     for n in eachindex(psi)
         θ = θϕ[1, n]
@@ -394,8 +403,7 @@ function generate_zeeman_gradient_MPO(sites, p, lat_mat)
     int = xmax - xmin
     for id in eachindex(sites)
         # Bgrad = [0.0,0.0,(lat_mat[1, id]-xmin)/int]
-        Bgrad = [0.0,0.0,lat_mat[1, id]/xmax]
-        # @show Bgrad
+        Bgrad = [0.0,0.0,lat_mat[2, id]/xmax]
         for (b, s) in zip(Bgrad, Sv)
             if abs(b) > 1e-6
                 ampo += b, s, id
