@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 python tdvp/plots/spin_expval_series.py
 python tdvp/plots/make_video_txt_file.py
 ffmpeg -r 24 -f concat -i video.txt out.mp4

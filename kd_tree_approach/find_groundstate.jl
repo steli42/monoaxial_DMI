@@ -317,25 +317,6 @@ let
 
     ψ₀, sites = fetch_initial_state(case, lattice_Q, D, αₘ, w, R, ecc)
 
-    # fig = plt.figure()
-    # ax = fig.add_subplot(projection = "3d")
-    # sx_expval = expect(ψ₀, "Sx")
-    # sy_expval = expect(ψ₀, "Sy")
-    # sz_expval = expect(ψ₀, "Sz")    
-    # for idx in axes(lattice_QH,2)
-    #     t = sz_expval
-    #     x, y, z = lattice_QH[1,idx],lattice_QH[2,idx], 0.0
-    #     vmin = minimum(t)
-    #     vmax = maximum(t)
-    #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
-    #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
-    #     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
-    #     plt.xlabel("x")
-    #     plt.ylabel("y")
-    # end
-    # ax.set_aspect("equal")
-    # plt.show()
-
     for α in α_values_pos 
 
         H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α, alpha_axis, pinch_hole)
@@ -396,23 +377,6 @@ let
                 insert_magnetization!(sx_expval_c, sy_expval_c, sz_expval_c, origin_index, [0.0, 0.0, 0.5*sign(Bcr)])
             end
         end
-
-        # fig = plt.figure()
-        # ax = fig.add_subplot(projection = "3d")
-            
-        # for idx in axes(lattice_QH,2)
-        #     t = sz_expval
-        #     x, y, z = lattice_QH[1,idx],lattice_QH[2,idx], 0.0
-        #     vmin = minimum(t)
-        #     vmax = maximum(t)
-        #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
-        #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
-        #     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
-        #     plt.xlabel("x")
-        #     plt.ylabel("y")
-        # end
-        # ax.set_aspect("equal")
-        # plt.show()
     
         Q = calculate_topological_charge(sx_expval, sy_expval, sz_expval, lattice_QH, Lx, Ly)
         println("The topological charge Q is: $Q")
