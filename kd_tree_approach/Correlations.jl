@@ -52,10 +52,10 @@ end
 let
   
   Lx, Ly = 15, 15
-  c₁ = 1/sqrt(2)
+  c₁ = 1.0
   ϕ = 0.0
   q_max = 1.0
-  q_step = 0.1
+  q_step = 0.01
   elements = [("Sx", "Sx", "S_{xx}"), ("Sx", "Sy", "S_{xy}"), ("Sx", "Sz", "S_{xz}"), 
               ("Sy", "Sx", "S_{yx}"), ("Sy", "Sy", "S_{yy}"), ("Sy", "Sz", "S_{yz}"),
               ("Sz", "Sx", "S_{zx}"), ("Sz", "Sy", "S_{zy}"), ("Sz", "Sz", "S_{zz}")] 

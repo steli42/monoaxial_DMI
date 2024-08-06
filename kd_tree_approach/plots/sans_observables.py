@@ -37,7 +37,7 @@ def plot_structure_factors(data_dir, output_image):
         ax = fig.add_subplot(gs[i // 3, i % 3])
         c = ax.pcolor(qx, qy, S_values, shading="auto", cmap=cmap)
 
-        ax.text(np.min(qx), np.max(qy), f"$\\mathbf{{{title}}}$", color="white", fontsize=24, ha="left", va="top")
+        ax.text(np.min(qx) + 0.1, np.max(qy) - 0.1, f"${title}$", color="white", fontsize=24, ha="left", va="top")
 
         ax.set_xticks([])
         ax.set_yticks([])
@@ -108,13 +108,15 @@ if __name__ == "__main__":
     # plot_structure_factors(data_dir, output_image)
     # output_image = "../out/cross_section.jpg"  
 
-    data_dir = "./out"  
-    output_image = "./out/structure_factors.jpg"  
+    # pointer = os.getcwd()
+    # print(pointer)
+    
+    data_dir = "kd_tree_approach/out"  
+    output_image = "kd_tree_approach/out/structure_factors.jpg"  
     plot_structure_factors(data_dir, output_image)
     
-    output_image = "./out/cross_section.jpg" 
+    output_image = "kd_tree_approach/out/cross_section.jpg" 
     plot_differential_cross_section(data_dir, output_image)
 
-    #run from kd_tree_approach folder like: python plots/sans_observables.py
-    #print(os.getcwd())    
+    
 
