@@ -110,6 +110,35 @@ function lobs_arr_to_df(lattice, aux_lattices, spins_arr, 𝐦, p; T=1.0, lbl="n
     return df_all
 end
 
+function corr_to_df(lattice, corr, p)
+    df = DataFrame()
+    x1s = []
+    y1s = []
+    z1s = []
+    x2s = []
+    y2s = []
+    z2s = []
+    for i1 in axes(lattice,2), i2 in axes(lattice,2)
+        push!(x1s, lattice[1,i1])
+        push!(x2s, lattice[1,i2])
+        push!(y1s, lattice[2,i1])
+        push!(y2s, lattice[2,i2])
+        push!(z1s, lattice[3,i1])
+        push!(z2s, lattice[3,i2])
+    end
+    df[!, "x"] = x1s
+    df[!, "y"] = y1s
+    df[!, "z"] = z1s
+    df[!, "x'"] = x2s
+    df[!, "y'"] = y2s
+    df[!, "z'"] = z2s
+    for k in keys(corr)
+        df[!, "$(k[1])*$(k[2])_re"] = real.(vcat(corr[k]...))
+        df[!, "$(k[1])*$(k[2])_im"] = imag.(vcat(corr[k]...))
+    end
+    return df
+end
+
 function time_evolve()
     p, lattice, aux_lattices, onsite_idxs, nn_idxs, nn_pbc_idxs, tree = create_lattice()
     psi0 = nothing
@@ -177,6 +206,14 @@ function time_evolve()
         𝐦[3, end, :] *= -1
     end
     𝐦[3, :, :] *= sign(p["B"][3])
+
+    S = ["Id", "Sx", "Sy", "Sz"]
+    corrs = Dict()
+    for s1 in S, s2 in S
+        corrs[s1, s2] = correlation_matrix(psi0, s1, s2)
+    end
+    df = corr_to_df(lattice, corrs, p)
+    CSV.write("$(p["io_dir"])/$(p["csv_mps_corr"])", df)
 
     lobs = [expect(psi0, s) for s in ["Sx", "Sy", "Sz"]]
     spins = reduce(vcat, transpose.(lobs))
