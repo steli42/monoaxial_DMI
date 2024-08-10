@@ -19,8 +19,8 @@
     "B0_sigma": 0.5,
     "B0": [0.0, 0.0, 0.5],
     "N_SK": 1,
-    "Nx": 15,
-    "Ny": 15,
+    "Nx": 11,
+    "Ny": 11,
     "M": 8,
     "sweeps": 500,
     "tdvp_sweeps": 100,
@@ -36,6 +36,7 @@
     "lattice_C": "square",
     "hdf5_final": "sk.h5",
     "hdf5_initial": "out/sk.h5",
-    "csv_mps": "state_mps.csv",
+    "csv_mps": "lobs.csv",
+    "csv_mps_corr": "corr.csv",
     "outputlevel": 1
 }
