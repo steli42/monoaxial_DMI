@@ -254,8 +254,7 @@ function time_evolve()
     df = lobs_to_df(lattice, aux_lattices, spins, 𝐦, p)
     CSV.write("$(p["io_dir"])/$(p["csv_mps"])", df)
 
-    amp = 0.075
-    H = H + amp*Hgrad
+    H = H + p["Bgrad_slope"]*Hgrad
 
     step(; sweep) = sweep
     current_time(; current_time) = current_time
@@ -269,7 +268,7 @@ function time_evolve()
         "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin
     )
 
-    T = 10/amp
+    T = 10/p["Bgrad_slope"]
     psiT = tdvp(
         H,
         -T * im,

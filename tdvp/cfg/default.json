@@ -22,6 +22,7 @@
     "Nx": 11,
     "Ny": 11,
     "M": 8,
+    "Bgrad_slope": 0.075,
     "sweeps": 500,
     "tdvp_sweeps": 100,
     "tdvp_order": 1,

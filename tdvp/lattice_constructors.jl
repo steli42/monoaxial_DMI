@@ -399,7 +399,7 @@ function create_lattice(fn=nothing)
     if !(fn==nothing)
         p = JSON.parsefile(fn)
     else
-        p = JSON.parsefile("tdvp/cfg/default.json") 
+        p = JSON.parsefile("cfg/default.json") 
         for x in ARGS
             println("Load config: $x")
             if isfile(x)

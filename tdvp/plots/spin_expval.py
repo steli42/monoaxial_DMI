@@ -125,15 +125,15 @@ for (idfn, fn) in enumerate(fns):
     #     S = (Sx**2 + Sy**2 + Sz**2)**(1/2)
     #     imag = ax.plot(x, S)
     # imag = ax.scatter(x, y, cmap='Greys', c=S, marker='h', s=90, vmin=0, vmax=0.5, edgecolors='face')
-    print(min(S), max(S), vabs)
+    # print(min(S), max(S), vabs)
     # imag = ax.scatter(x, y, cmap='Greys', c=(vabs-S)/vabs, marker='h', s=90, edgecolors='face', vmin=0,vmax=max(S))
     normdev = abs(vabs-S)
     normdev = normdev/vabs
-    print(min(normdev), max(normdev))
+    # print(min(normdev), max(normdev))
     nmax = 1.0
     # normdev = normdev/0.01674
     # normdev = normdev/max(normdev)
-    print(min(normdev), max(normdev))
+    # print(min(normdev), max(normdev))
     imag = ax.scatter(x, y, cmap='Greys', c=normdev, marker=mkr, s=90, vmin=0, vmax=nmax, edgecolors='face')
     # ax.quiver(x, y, Sx, Sy, units='xy', width=0.07, scale=vabs, pivot='middle', color='white')
     mmy = np.asarray([np.min(y),np.max(y)])
@@ -146,24 +146,24 @@ for (idfn, fn) in enumerate(fns):
     # print(Ox**2 + Oy**2 + Oz**2)
     # Ox, Oy, Oz = Sx, Sy, Sz
     # print(Ox, Oy, Oz)
-    axins = inset_axes(
-        ax,
-        width="2%",  # width: 5% of parent_bbox width
-        height="75%",  # height: 50%
-        loc="center right",
-        bbox_to_anchor=(0., 0, 0.92, 1),
-        bbox_transform=ax.transAxes,
-        borderpad=0
-    )
-    cbar = fig.colorbar(imag, cax=axins, orientation = 'vertical')
-    cbar.ax.set_title('$\\delta s$')
-    plt.savefig(f'{out_dir}/norm{ffmt}', pad_inches=0, bbox_inches='tight', dpi=my_dpi)
+    # axins = inset_axes(
+    #     ax,
+    #     width="2%",  # width: 5% of parent_bbox width
+    #     height="75%",  # height: 50%
+    #     loc="center right",
+    #     bbox_to_anchor=(0., 0, 0.92, 1),
+    #     bbox_transform=ax.transAxes,
+    #     borderpad=0
+    # )
+    # cbar = fig.colorbar(imag, cax=axins, orientation = 'vertical')
+    # cbar.ax.set_title('$\\delta s$')
+    # plt.savefig(f'{out_dir}/norm{ffmt}', pad_inches=0, bbox_inches='tight', dpi=my_dpi)
 
     # plt.close()
     # plt.plot()
     # el.export_legend(ax, f'{in_dir}/plot_legend{ffmt}')
 
-    # continue
+    continue
 
     latt = np.asarray(data[['x', 'y', 'z']])
     kdt = KDTree(latt, leaf_size=30, metric='euclidean')
