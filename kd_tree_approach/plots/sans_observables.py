@@ -6,20 +6,39 @@ import matplotlib.gridspec as gridspec
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.family'] = 'serif'
 
-def read_csv_data(file_path):
+def read_csv_data(file_path, data_type):
     data = np.loadtxt(file_path, delimiter=',')
+    num_points = data.shape[0]
+    n = int(np.sqrt(num_points))
+    if n * n != num_points:
+        raise ValueError("Data points are not in a square configuration")   #This might be reduntant; we always take a square of q-values
+    
     qx = data[:, 0].reshape(-1, int(np.sqrt(data.shape[0])))
     qy = data[:, 1].reshape(-1, int(np.sqrt(data.shape[0])))
-    S_values = data[:, 2].reshape(-1, int(np.sqrt(data.shape[0])))
+    
+    if data_type == 'Re':
+        S_values = data[:, 2].reshape(-1, int(np.sqrt(data.shape[0])))
+    elif data_type == 'Im':
+        S_values = data[:, 3].reshape(-1, int(np.sqrt(data.shape[0])))
+    elif data_type == 'Norm':
+        S_values = data[:, 4].reshape(-1, int(np.sqrt(data.shape[0])))
+    else:
+        raise ValueError("Invalid data_type. Choose from 'Re', 'Im' or 'Norm'.")
+        
     return qx, qy, S_values
 
-def normalize_S_values(S_values):
+def normalize_S_values(S_values, norm_const):
     # Normalize the S_values to the range [0, 1]
     min_val = np.min(S_values)
-    max_val = np.max(S_values)
+    max_val = np.max(S_values)  
+    
+    if max_val == min_val:
+        if max_val == 0.0:
+            return np.full_like(S_values, 0.0)
+        return np.full_like(S_values, norm_const)    
     return (S_values - min_val) / (max_val - min_val)
 
-def plot_structure_factors(data_dir, output_image):
+def plot_structure_factors(data_dir, output_image, norm_const, data_type='Re', log_scale=False):
     fig = plt.figure(figsize=(10, 10))
     gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0, hspace=0)
 
@@ -30,9 +49,26 @@ def plot_structure_factors(data_dir, output_image):
 
     for i, title in enumerate(plot_titles):
         csv_filename = os.path.join(data_dir, f"{title}.csv")
-        qx, qy, S_values = read_csv_data(csv_filename)
+        qx, qy, S_values = read_csv_data(csv_filename, data_type)
 
-        S_values = normalize_S_values(S_values)
+        if data_type in ['Re','Im']:
+            S_values = normalize_S_values(S_values, norm_const)
+        
+        if data_type == 'Norm':
+            if log_scale:
+                S_values = np.where(S_values > 0, S_values, np.nan)  # Replace non-positive values with NaN
+                S_values = np.log10(S_values)
+                cbar_label = r'$\log|S|$'        
+            else:
+                cbar_label = r'$|S|$'
+        else:
+            if log_scale:
+                # Note: For 'Re' and 'Im', log scale is not typically used
+                S_values = np.where(S_values > 0, S_values, np.nan)  
+                S_values = np.log10(S_values)
+                cbar_label = r'$\log($' + data_type + '$(S))$' 
+            else:
+                cbar_label = data_type + r'${}(S)$'         
         
         ax = fig.add_subplot(gs[i // 3, i % 3])
         c = ax.pcolor(qx, qy, S_values, shading="auto", cmap=cmap)
@@ -53,17 +89,19 @@ def plot_structure_factors(data_dir, output_image):
     cbar_ax = fig.add_axes([0.11, 0.04, 0.775, 0.03])  
     cbar = fig.colorbar(c, cax=cbar_ax, orientation="horizontal")
     cbar.ax.tick_params(labelsize=18)
+    plt.text(0.1, 0.04, cbar_label, rotation=0, ha='right', va='bottom', fontsize=20, transform=fig.transFigure)
 
     plt.savefig(output_image, dpi=300)
     plt.close(fig)
 
 def calculate_differential_cross_section(data_dir):
-    Sxx = read_csv_data(os.path.join(data_dir, "S_{xx}.csv"))[2]
-    Sxy = read_csv_data(os.path.join(data_dir, "S_{xy}.csv"))[2]
-    Syy = read_csv_data(os.path.join(data_dir, "S_{yy}.csv"))[2]
-    Szz = read_csv_data(os.path.join(data_dir, "S_{zz}.csv"))[2]
+    Sxx = read_csv_data(os.path.join(data_dir, "S_{xx}.csv"), 'Re')[2]
+    Sxy = read_csv_data(os.path.join(data_dir, "S_{xy}.csv"), 'Re')[2]
+    Syx = read_csv_data(os.path.join(data_dir, "S_{yx}.csv"), 'Re')[2]
+    Syy = read_csv_data(os.path.join(data_dir, "S_{yy}.csv"), 'Re')[2]
+    Szz = read_csv_data(os.path.join(data_dir, "S_{zz}.csv"), 'Re')[2]
 
-    qx, qy, _ = read_csv_data(os.path.join(data_dir, "S_{xx}.csv"))
+    qx, qy, _ = read_csv_data(os.path.join(data_dir, "S_{xx}.csv"), 'Re')
     q_squared = qx**2 + qy**2
 
     sigma = np.zeros_like(Sxx)
@@ -84,16 +122,30 @@ def calculate_differential_cross_section(data_dir):
 
                 sigma[i, j] = (Szz[i, j] + Sxx[i, j] * (1 - qx2_over_q2) 
                                + Syy[i, j] * (1 - qy2_over_q2) 
-                               - 2 * qxqy_over_q2 * Sxy[i, j])
+                               - qxqy_over_q2 * Sxy[i, j] - qxqy_over_q2 * Syx[i, j])
 
     return qx, qy, sigma
-
-def plot_differential_cross_section(data_dir, output_image):
+        
+def plot_differential_cross_section(data_dir, output_image, vmin=None, vmax=None, log_scale=False):
     qx, qy, sigma = calculate_differential_cross_section(data_dir)
-
+    
+    if log_scale:
+        sigma = np.where(sigma > 0, sigma, np.nan) 
+        sigma_log = np.log10(sigma)
+        if vmin is None:
+            vmin = np.nanmin(sigma_log)  
+        if vmax is None:
+            vmax = np.nanmax(sigma_log)
+    else:
+        sigma_log = sigma
+        if vmin is None:
+            vmin = np.min(sigma)
+        if vmax is None:
+            vmax = np.max(sigma)
+    
     plt.figure(figsize=(8, 6))
-    plt.pcolor(qx, qy, sigma, shading='auto', cmap='plasma')
-    plt.colorbar(label=r'$\sigma(q)$')
+    c = plt.pcolor(qx, qy, sigma_log, shading='auto', cmap='plasma', vmin=vmin, vmax=vmax)
+    plt.colorbar(c, label=r'$\log(\sigma)$' if log_scale else r'$\sigma(q)$')
     plt.xlabel(r"$q_{x} \, a / \pi$")
     plt.ylabel(r"$q_{y} \, a / \pi$")
     plt.title(r"Differential Cross Section $\sigma(\mathbf{q})$")
@@ -102,21 +154,26 @@ def plot_differential_cross_section(data_dir, output_image):
 
 #main
 if __name__ == "__main__":
-    # if run in REPL from the plots folder
-    # data_dir = "../out"  # we need to go one step back otherwise the script will look for the out folder inside plots
-    # output_image = "../out/structure_factors.jpg"  
-    # plot_structure_factors(data_dir, output_image)
-    # output_image = "../out/cross_section.jpg"  
-
-    # pointer = os.getcwd()
-    # print(pointer)
     
-    data_dir = "kd_tree_approach/out"  
-    output_image = "kd_tree_approach/out/structure_factors.jpg"  
-    plot_structure_factors(data_dir, output_image)
+    # norm_const deals with the polarised state where many S_{ij} are constant and cant be normalised like the others
+    # S_{ij} is normalised relative to the max value of S_{zz} ---> after analytical check, this makes norm_const = 1 / Lx^2
+    norm_const = 15 ** -2
     
-    output_image = "kd_tree_approach/out/cross_section.jpg" 
-    plot_differential_cross_section(data_dir, output_image)
+    vmin = None
+    vmax = None
+    
+    data_dir = "kd_tree_approach/out_FM"  
+    output_image = "kd_tree_approach/out_FM/structure_factors.jpg"  
+    
+    # log_scale maps non-positive values to NaN and windows filled with NaN values will be left transparent
+    plot_structure_factors(data_dir, output_image, norm_const, 'Re', log_scale=False)
+    
+    output_image = "kd_tree_approach/out_FM/cross_section.jpg" 
+    plot_differential_cross_section(data_dir, output_image, vmin=vmin, vmax=vmax, log_scale=True)
 
     
-
+# if run in REPL from the plots folder
+# data_dir = "../out_FM"  # we need to go one step back otherwise the script will look for the out_FM folder inside plots
+# output_image = "../out_FM/structure_factors.jpg"  
+# plot_structure_factors(data_dir, output_image)
+# output_image = "../out_FM/cross_section.jpg"  
