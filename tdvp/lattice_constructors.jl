@@ -404,6 +404,8 @@ function create_lattice(fn=nothing)
             println("Load config: $x")
             if isfile(x)
                 p = JSON.parsefile(x)
+            else
+                print("WARNING: NO CONFIG FOUND -- PROCEED WITH DEFAULT\n")
             end
         end
     end

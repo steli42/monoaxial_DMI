@@ -24,7 +24,7 @@
 #__________________________
 #SBATCH -N 1
 #SBATCH --ntasks-per-node 2
-#SBATCH --ntasks-per-socket 2
+#SBATCH --ntasks-per-socket 1
 #SBATCH -c 64  # multithreading per task : -c --cpus-per-task <n> request
 #__________________________
 #SBATCH -o logs/%x-%j.out  # log goes into logs/<jobname>-<jobid>.out
