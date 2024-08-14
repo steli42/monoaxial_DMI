@@ -38,11 +38,11 @@ def normalize_S_values(S_values, norm_const):
         return np.full_like(S_values, norm_const)    
     return (S_values - min_val) / (max_val - min_val)
 
-def plot_structure_factors(data_dir, output_image, norm_const, data_type='Re', log_scale=False):
+def plot_structure_factors(data_dir, output_image, norm_const, data_type='Re', cmap="plasma", vmin=None, vmax=None, log_scale=False):
     fig = plt.figure(figsize=(10, 10))
     gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0, hspace=0)
 
-    cmap = "plasma"
+    cmap = cmap
     plot_titles = ["S_{xx}", "S_{xy}", "S_{xz}",
                    "S_{yx}", "S_{yy}", "S_{yz}",
                    "S_{zx}", "S_{zy}", "S_{zz}"]
@@ -71,7 +71,7 @@ def plot_structure_factors(data_dir, output_image, norm_const, data_type='Re', l
                 cbar_label = data_type + r'${}(S)$'         
         
         ax = fig.add_subplot(gs[i // 3, i % 3])
-        c = ax.pcolor(qx, qy, S_values, shading="auto", cmap=cmap)
+        c = ax.pcolor(qx, qy, S_values, shading="auto", cmap=cmap, vmin=vmin, vmax=vmax)
 
         ax.text(np.min(qx) + 0.1, np.max(qy) - 0.1, f"${title}$", color="white", fontsize=24, ha="left", va="top")
 
@@ -87,11 +87,11 @@ def plot_structure_factors(data_dir, output_image, norm_const, data_type='Re', l
 
     # Create a common colorbar that spans the entire width of the figure
     cbar_ax = fig.add_axes([0.11, 0.04, 0.775, 0.03])  
-    cbar = fig.colorbar(c, cax=cbar_ax, orientation="horizontal")
+    cbar = fig.colorbar(c, cax=cbar_ax, orientation='horizontal', extend='max')
     cbar.ax.tick_params(labelsize=18)
     plt.text(0.1, 0.04, cbar_label, rotation=0, ha='right', va='bottom', fontsize=20, transform=fig.transFigure)
 
-    plt.savefig(output_image, dpi=300)
+    plt.savefig(output_image, dpi=600)
     plt.close(fig)
 
 def calculate_differential_cross_section(data_dir):
@@ -126,7 +126,7 @@ def calculate_differential_cross_section(data_dir):
 
     return qx, qy, sigma
         
-def plot_differential_cross_section(data_dir, output_image, vmin=None, vmax=None, log_scale=False):
+def plot_differential_cross_section(data_dir, output_image, cmap="plasma", vmin=None, vmax=None, log_scale=False):
     qx, qy, sigma = calculate_differential_cross_section(data_dir)
     
     if log_scale:
@@ -144,12 +144,12 @@ def plot_differential_cross_section(data_dir, output_image, vmin=None, vmax=None
             vmax = np.max(sigma)
     
     plt.figure(figsize=(8, 6))
-    c = plt.pcolor(qx, qy, sigma_log, shading='auto', cmap='plasma', vmin=vmin, vmax=vmax)
+    c = plt.pcolor(qx, qy, sigma_log, shading='auto', cmap=cmap, vmin=vmin, vmax=vmax)
     plt.colorbar(c, label=r'$\log(\sigma)$' if log_scale else r'$\sigma(q)$')
     plt.xlabel(r"$q_{x} \, a / \pi$")
     plt.ylabel(r"$q_{y} \, a / \pi$")
     plt.title(r"Differential Cross Section $\sigma(\mathbf{q})$")
-    plt.savefig(output_image, dpi=300)
+    plt.savefig(output_image, dpi=600)
     plt.close()
 
 #main
@@ -159,21 +159,19 @@ if __name__ == "__main__":
     # S_{ij} is normalised relative to the max value of S_{zz} ---> after analytical check, this makes norm_const = 1 / Lx^2
     norm_const = 15 ** -2
     
-    vmin = None
-    vmax = None
-    
-    data_dir = "kd_tree_approach/out_FM"  
-    output_image = "kd_tree_approach/out_FM/structure_factors.jpg"  
+    data_dir = "kd_tree_approach/out_sk"  
+    output_image = "kd_tree_approach/out_sk/structure_factors.jpg"
+    color_map = "RdBu_r"  
     
     # log_scale maps non-positive values to NaN and windows filled with NaN values will be left transparent
-    plot_structure_factors(data_dir, output_image, norm_const, 'Re', log_scale=False)
+    plot_structure_factors(data_dir, output_image, norm_const, data_type='Norm', cmap=color_map, vmin=0, vmax=1000, log_scale=False)
     
-    output_image = "kd_tree_approach/out_FM/cross_section.jpg" 
-    plot_differential_cross_section(data_dir, output_image, vmin=vmin, vmax=vmax, log_scale=True)
+    output_image = "kd_tree_approach/out_sk/cross_section.jpg" 
+    plot_differential_cross_section(data_dir, output_image, cmap=color_map, vmin=None, vmax=None, log_scale=True)
 
     
 # if run in REPL from the plots folder
-# data_dir = "../out_FM"  # we need to go one step back otherwise the script will look for the out_FM folder inside plots
-# output_image = "../out_FM/structure_factors.jpg"  
+# data_dir = "../out_sk"  # we need to go one step back otherwise the script will look for the out_sk folder inside plots
+# output_image = "../out_sk/structure_factors.jpg"  
 # plot_structure_factors(data_dir, output_image)
-# output_image = "../out_FM/cross_section.jpg"  
+# output_image = "../out_sk/cross_section.jpg"  
