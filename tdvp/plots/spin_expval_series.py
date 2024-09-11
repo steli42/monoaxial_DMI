@@ -16,15 +16,16 @@ plt.rc('text', usetex=True)
 plt.rc('text.latex',preamble='\\usepackage{bm}')
 fs = 1000
 fs = 1070  # 13 X 13
-# fs = 1230  # 15 X 15
+fs = 1230  # 15 X 15
+# fs = 1350  # 17 X 17
 # fs = 1690  # 21 x 21
 fs = 2450  # 31 x 31
-# fs = 2000
+# fs = 3400  # 45 x 15
 in_dir = 'out'
 mkr = 's'
 my_dpi = 300
 ffmt = ''
-str = "/series_state_mps"
+str = "series_lobs"
 mpl.rcParams['figure.figsize'] = (fs/my_dpi,fs/my_dpi)
 
 import matplotlib.pyplot as plt
@@ -44,6 +45,7 @@ fns = np.sort(ff.find_files(f'*{str}.csv', in_dir))
 
 make_averages_csv = True
 plot_individuals = True
+use_vlad_colorcode = False
 
 nstates = 1
 fig, ax = plt.subplots()
@@ -79,13 +81,18 @@ for (idfn, fn) in enumerate(fns):
         normdev = normdev/vabs
         print(min(normdev), max(normdev))
 
-        # imag = ax.scatter(x, y, cmap='RdBu_r', c=Sz, marker=mkr, s=90, vmin=-vabs, vmax=vabs)
-        for (xi,yi,sx,sy,sz,ds) in zip(x,y,Sx,Sy,Sz,normdev):
-            sn = (sx**2+sy**2+sz**2)**0.5
-            color = hsv2rgb([sx/sn,sy/sn,sz/sn],0,1)
-            ax.scatter(xi, yi, c=1-ds, cmap='Grays', marker='s', s=90, vmin=0, vmax=vabs, edgecolor='None')
-            # imag = ax.scatter(xi, yi, facecolor=color, edgecolor='None', marker='o', s=90*0.8)
-            ax.quiver(xi, yi, sx, sy, units='xy', width=0.08, scale=vabs*1, pivot='middle', color=color)
+        if use_vlad_colorcode:
+            # imag = ax.scatter(x, y, cmap='RdBu_r', c=Sz, marker=mkr, s=90, vmin=-vabs, vmax=vabs)
+            for (xi,yi,sx,sy,sz,ds) in zip(x,y,Sx,Sy,Sz,normdev):
+                sn = (sx**2+sy**2+sz**2)**0.5
+                color = hsv2rgb([sx/sn,sy/sn,sz/sn],0,0)
+                ax.scatter(xi, yi, c=ds/2, cmap='Greys', marker='s', s=90, vmin=0, vmax=vabs, edgecolor='None')
+                imag = ax.scatter(xi, yi, facecolor=color, edgecolor='None', marker='o', s=90*0.1)
+                ax.quiver(xi, yi, sx, sy, units='xy', width=0.08, scale=vabs*1, pivot='middle', color=color)
+        else:
+            imag = ax.scatter(x, y, cmap='RdBu_r', c=Sz, marker=mkr, s=90, vmin=-vabs, vmax=vabs, edgecolors='none')
+            ax.quiver(x, y, Sx, Sy, units='xy', width=0.08, scale=vabs*1, pivot='middle', color='white')
+
         mmy = np.asarray([np.min(y),np.max(y)])
         mmx = np.asarray([np.min(x),np.max(x)])
         ax.set_ylim(1.5*mmy)
