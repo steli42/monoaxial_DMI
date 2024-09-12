@@ -35,8 +35,8 @@
     "lattice_C=": "triangular_flake",
     "lattice": "square",
     "lattice_C": "square",
-    "hdf5_final": "sk.h5",
-    "hdf5_initial": "out/sk.h5",
+    "hdf5_final": "state.h5",
+    "hdf5_initial": "out/state.h5",
     "csv_mps": "lobs.csv",
     "csv_mps_corr": "corr.csv",
     "outputlevel": 1
