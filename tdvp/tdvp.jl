@@ -207,13 +207,13 @@ function time_evolve()
     end
     𝐦[3, :, :] *= sign(p["B"][3])
 
-    S = ["Id", "Sx", "Sy", "Sz"]
-    corrs = Dict()
-    for s1 in S, s2 in S
-        corrs[s1, s2] = correlation_matrix(psi0, s1, s2)
-    end
-    df = corr_to_df(lattice, corrs, p)
-    CSV.write("$(p["io_dir"])/$(p["csv_mps_corr"])", df)
+    # S = ["Id", "Sx", "Sy", "Sz"]
+    # corrs = Dict()
+    # for s1 in S, s2 in S
+    #     corrs[s1, s2] = correlation_matrix(psi0, s1, s2)
+    # end
+    # df = corr_to_df(lattice, corrs, p)
+    # CSV.write("$(p["io_dir"])/$(p["csv_mps_corr"])", df)
 
     lobs = [expect(psi0, s) for s in ["Sx", "Sy", "Sz"]]
     spins = reduce(vcat, transpose.(lobs))
@@ -285,19 +285,23 @@ function time_evolve()
         # maxiter=10
     )
 
+    f = h5open("$(p["io_dir"])/time_evolved_$(p["hdf5_final"])", "w")
+    [write(f, "psi$i", psi) for (i, psi) in enumerate(obs.states)]
+    close(f)
+
     df = lobs_arr_to_df(lattice, aux_lattices, obs.spin, 𝐦, p; T=T, lbl="t")
     CSV.write("$(p["io_dir"])/series_$(p["csv_mps"])", df)
 
-    println("\nResults")
-    println("=======")
-    for n in 1:length(obs.steps)
-        print("step = ", obs.steps[n])
-        print(", time = ", round(obs.times[n]; digits=3))
-        print(", |⟨ψⁿ|ψⁱ⟩| = ", round(abs(inner(obs.states[n], psi)); digits=3))
-        print(", |⟨ψⁿ|ψᶠ⟩| = ", round(abs(inner(obs.states[n], psiT)); digits=3))
-        # print(", ⟨Sᶻ⟩ = ", round.(obs.spin[n]; digits=3))
-        println()
-    end
+    # println("\nResults")
+    # println("=======")
+    # for n in 1:length(obs.steps)
+    #     print("step = ", obs.steps[n])
+    #     print(", time = ", round(obs.times[n]; digits=3))
+    #     print(", |⟨ψⁿ|ψⁱ⟩| = ", round(abs(inner(obs.states[n], psi)); digits=3))
+    #     print(", |⟨ψⁿ|ψᶠ⟩| = ", round(abs(inner(obs.states[n], psiT)); digits=3))
+    #     # print(", ⟨Sᶻ⟩ = ", round.(obs.spin[n]; digits=3))
+    #     println()
+    # end
     normalize!(psi)
     normalize!(psiT)
     @show inner(psi', H, psi)
@@ -317,10 +321,6 @@ function time_evolve()
     df[!, "<sk|ask>_re"] = [real(me)]
     df[!, "<sk|ask>_im"] = [imag(me)]
     CSV.write("$(p["io_dir"])/energy.csv", df)
-
-    f = h5open("$(p["io_dir"])/time_evolved_$(p["hdf5_final"])", "w")
-    write(f, "psi", psiT)
-    close(f)
 
     return
     return p, lattice, aux_lattices, onsite_idxs, nn_idxs, nn_pbc_idxs, energy
