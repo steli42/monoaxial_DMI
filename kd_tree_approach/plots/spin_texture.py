@@ -16,7 +16,7 @@ mpl.rcParams['ytick.right'] = True
 mpl.rcParams['ytick.direction'] = 'out'
 mpl.rcParams['xtick.direction'] = 'out'
 
-cmap = plt.get_cmap("turbo")
+cmap = plt.get_cmap("rainbow")
 cmap.set_bad('k')
 cmap.set_under('k')
 cmap.set_over('r')
@@ -42,9 +42,9 @@ def plot_3d_quiver(x, y, z, u, v, w, xlim=None, ylim=None, zlim=None):
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=np.pi))
     sm.set_array([])
     
-    cbar = fig.colorbar(sm, ax=ax, shrink=0.5)
-    cbar.set_ticks([0, np.pi / 4, np.pi / 2, 3 * np.pi / 4, np.pi])
-    cbar.set_ticklabels([0, r"$\pi$/4", r"$\pi$/2", r"3$\pi$/4", r"$\pi$"])
+    # cbar = fig.colorbar(sm, ax=ax, shrink=0.5)
+    # cbar.set_ticks([0, np.pi / 4, np.pi / 2, 3 * np.pi / 4, np.pi])
+    # cbar.set_ticklabels([0, r"$\pi$/4", r"$\pi$/2", r"3$\pi$/4", r"$\pi$"])
     
     #cb.minor_ticks_on()
     if xlim is not None:
@@ -56,16 +56,12 @@ def plot_3d_quiver(x, y, z, u, v, w, xlim=None, ylim=None, zlim=None):
     ax.grid(False)    
     plt.show()
 
-file_path = 'kd_tree_approach/original/0_14_Mag2D_original.csv'
+file_path = 'kd_tree_approach/out_super_sqrt2/lobs.csv'
 X,Y,Z,U,V,W,A = np.loadtxt(file_path, delimiter=',', unpack=True)
 
-xmax = X.max()
-ymax = Y.max()
-zmax = Z.max()
-
-xlim = (-xmax - 0.5, xmax + 0.5)
-ylim = (-ymax - 0.5, ymax + 0.5)
-zlim = (-1.0, zmax + 2.0)
+xlim = (X.min()-1, X.max()+1)
+ylim = (Y.min()-1, Y.max()+1)
+zlim = (-1.0, 2.0)
 
 plot_3d_quiver(X,Y,Z,U,V,W,xlim=xlim, ylim=ylim, zlim=zlim)
 

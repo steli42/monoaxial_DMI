@@ -190,7 +190,7 @@ function my_correlation_matrix(psi::MPS, _Op1, _Op2; sites=1:length(psi), site_r
   return C
 end
 
-function calculate_StructureFactor(lattice::Array{Float64,2}, ψ::MPS, q_max, q_step, S1::String, S2::String)
+function calculate_structureFactor(lattice::Array{Float64,2}, ψ::MPS, q_max, q_step, S1::String, S2::String)
 
   corr = my_correlation_matrix(ψ, S1, S2)
   qx_range = -q_max:q_step:q_max
@@ -216,47 +216,99 @@ function calculate_StructureFactor(lattice::Array{Float64,2}, ψ::MPS, q_max, q_
   return qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm
 end
 
+function gamma_matrix(psi::MPS, S1::String, S2::String)
+  M1 = expect(psi, S1)
+  M2 = expect(psi, S2)
+
+  gamma = zeros(length(M1), length(M2))
+
+  for i in eachindex(M1), j in eachindex(M2)
+    gamma[i, j] = M1[i] * M2[j]
+  end
+
+  return gamma
+end
+
+function calculate_classical_structureFactor(lattice::Array{Float64,2}, ψ::MPS, q_max, q_step, S1::String, S2::String)
+
+  gamma = gamma_matrix(ψ, S1, S2)
+  qx_range = -q_max:q_step:q_max
+  qy_range = qx_range
+  s_values_real = zeros(length(qx_range), length(qx_range))
+  s_values_imag = zeros(length(qx_range), length(qx_range))
+  s_values_norm = zeros(length(qx_range), length(qx_range))
+
+  for (qx_index, q_x) in enumerate(qx_range), (qy_index, q_y) in enumerate(qy_range)
+    s = 0.0
+    for idxi in axes(lattice, 2), idxj in axes(lattice, 2)
+      r_i = lattice[:, idxi]
+      r_j = lattice[:, idxj]
+      q = [q_x, q_y]
+      s += gamma[idxi, idxj] * exp(-im * dot(q, r_i - r_j))
+    end
+    s_values_real[qy_index, qx_index] = real(s)
+    s_values_imag[qy_index, qx_index] = imag(s)
+    s_values_norm[qy_index, qx_index] = abs(s)
+  end
+
+  qx_mesh, qy_mesh = meshgrid(collect(qx_range), collect(qy_range))
+  return qx_mesh, qy_mesh, s_values_real, s_values_imag, s_values_norm
+end
+
 let
 
   Lx, Ly = 15, 15
   c = 1.0
   ϕ = 0.0
   q_max = pi
-  q_step = 0.025
+  q_step = 0.1
   elements = [("Sx", "Sx", "S_{xx}"), ("Sx", "Sy", "S_{xy}"), ("Sx", "Sz", "S_{xz}"),
     ("Sy", "Sx", "S_{yx}"), ("Sy", "Sy", "S_{yy}"), ("Sy", "Sz", "S_{yz}"),
     ("Sz", "Sx", "S_{zx}"), ("Sz", "Sy", "S_{zy}"), ("Sz", "Sz", "S_{zz}")]
+  elements_class = [("Sx", "Sx", "G_{xx}"), ("Sx", "Sy", "G_{xy}"), ("Sx", "Sz", "G_{xz}"),
+    ("Sy", "Sx", "G_{yx}"), ("Sy", "Sy", "G_{yy}"), ("Sy", "Sz", "G_{yz}"),
+    ("Sz", "Sx", "G_{zx}"), ("Sz", "Sy", "G_{zy}"), ("Sz", "Sz", "G_{zz}")]
 
   output_dir = "kd_tree_approach/out"
   if !isdir(output_dir)
     mkpath(output_dir)
   end
 
-  f = h5open("kd_tree_approach/0_0_Mag2D_original.h5", "r")
+  f = h5open("kd_tree_approach/0_0_orig.h5", "r")
   ψ₁ = read(f, "Psi", MPS)
   close(f)
 
-  f = h5open("kd_tree_approach/0_0_Mag2D_conjugated.h5", "r")
+  f = h5open("kd_tree_approach/0_0_conj.h5", "r")
   ψ₂ = read(f, "Psi_c", MPS)
   close(f)
 
   Ψ = c * exp(im * ϕ) * ψ₂ + sqrt(1 - c^2) * ψ₁
   lattice = build_lattice(Lx, Ly, "rectangular")
 
-  # sites = siteinds(Ψ)
-  # Psi_pol = MPS(sites, ["Up" for s in sites])
-  # Psi_pol = normalize(Psi_pol)
+  # for (op1, op2, plot_title) in elements
+  #   @info "Calculating structure factor $plot_title ..."
+  #   qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm = calculate_structureFactor(lattice, Ψ, q_max, q_step, op1, op2)
 
-  for (op1, op2, plot_title) in elements
-    @info "Calculating structure factor $plot_title ..."
-    qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm = calculate_StructureFactor(lattice, Ψ, q_max, q_step, op1, op2)
+  #   # Save data to CSV files
+  #   csv_filename = joinpath(output_dir, "$(plot_title).csv")
+  #   open(csv_filename, "w") do file
+  #     writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values_real), vec(S_values_imag), vec(S_values_norm)), ',')
+  #   end
+
+  #   println("Data for $plot_title saved to $csv_filename")
+  # end
+
+  for (op1, op2, plot_title) in elements_class
+    @info "Calculating gamma factor $plot_title ..."
+    qx_mesh, qy_mesh, s_values_real, s_values_imag, s_values_norm = calculate_classical_structureFactor(lattice, Ψ, q_max, q_step, op1, op2)
 
     # Save data to CSV files
     csv_filename = joinpath(output_dir, "$(plot_title).csv")
     open(csv_filename, "w") do file
-      writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values_real), vec(S_values_imag), vec(S_values_norm)), ',')
+      writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(s_values_real), vec(s_values_imag), vec(s_values_norm)), ',')
     end
 
     println("Data for $plot_title saved to $csv_filename")
   end
+
 end

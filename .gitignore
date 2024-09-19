@@ -168,6 +168,7 @@ launch_jobs/out
 *.csv
 *.json
 *.png
+*.jpg
 *.DS_Store
 *.gif
 *.DS_Store
