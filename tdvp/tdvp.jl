@@ -222,6 +222,8 @@ function time_evolve()
 
     @info "Generate MPO's"
     H = generate_full_MPO(sites, 𝐦, p, lattice, aux_lattices, nn_idxs, nn_pbc_idxs)
+
+    print(unique(lattice[2,:]))
     @info "MPO's generated."
 
     Hpin = generate_pinning_zeeman_MPO(sites, p, lattice, aux_lattices, nn_idxs, nn_pbc_idxs)
@@ -238,6 +240,8 @@ function time_evolve()
     psi = psi0
 
     Hgrad = generate_zeeman_gradient_MPO(sites, p, lattice)
+
+    @show maxlinkdim(H)
     
     energy, psi = dmrg1(H+Hpin, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
     @show inner(psi', H, psi)
@@ -268,7 +272,7 @@ function time_evolve()
         "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin
     )
 
-    T = 10/p["Bgrad_slope"]
+    T = 6/p["Bgrad_slope"]
     psiT = tdvp(
         H,
         -T * im,
@@ -285,12 +289,14 @@ function time_evolve()
         # maxiter=10
     )
 
-    f = h5open("$(p["io_dir"])/time_evolved_$(p["hdf5_final"])", "w")
-    [write(f, "psi$i", psi) for (i, psi) in enumerate(obs.states)]
-    close(f)
-
     df = lobs_arr_to_df(lattice, aux_lattices, obs.spin, 𝐦, p; T=T, lbl="t")
     CSV.write("$(p["io_dir"])/series_$(p["csv_mps"])", df)
+
+    if p["save_psi(t)"]
+        f = h5open("$(p["io_dir"])/time_evolved_$(p["hdf5_final"])", "w")
+        [write(f, "psi$i", psi) for (i, psi) in enumerate(obs.states)]
+        close(f)
+    end
 
     # println("\nResults")
     # println("=======")
