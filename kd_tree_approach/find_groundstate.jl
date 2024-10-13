@@ -1,6 +1,6 @@
 using NearestNeighbors, Statistics, ITensors, Printf, LinearAlgebra, SparseArrays, HDF5
 import ITensors.ITensorMPS.promote_itensor_eltype, ITensors.ITensorMPS._op_prod
-#using PyPlot
+using PyPlot
 include("projmpo1.jl")
 include("dmrg1.jl")
 #pygui(true)
@@ -244,7 +244,7 @@ let
     R = 4.5
     ecc = 1.0
     sweep_count = 100
-    M = 32 
+    M = 1 
     cutoff_tol = 1e-12
     E_tol = 1e-8
     oplvl = 1.0
@@ -264,8 +264,8 @@ let
     α_values_neg = sort(map(x -> -x, α_values_pos))
 
     base_dir = "kd_tree_approach"
-    original_dir = joinpath(base_dir, "original")
-    conjugated_dir = joinpath(base_dir, "conjugated")
+    original_dir = joinpath(base_dir, "states", "original")
+    conjugated_dir = joinpath(base_dir, "states", "conjugated")
     isdir(original_dir) || mkdir(original_dir)
     isdir(conjugated_dir) || mkdir(conjugated_dir)
     
@@ -354,8 +354,8 @@ let
         end
             
         formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
-        original_file_path = joinpath(original_dir, "$(formatted_alpha)_Mag2D_original.csv")
-        conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_Mag2D_conjugated.csv")
+        original_file_path = joinpath(original_dir, "$(formatted_alpha)_orig.csv")
+        conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_conj.csv")
 
         write_mag_to_csv(original_file_path, lattice_QH, sx_expval, sy_expval, sz_expval)
 

@@ -283,7 +283,7 @@ end
 let
 
   Lx, Ly = 15, 15
-  c = 1/sqrt(2)
+  c = 0.0
   ϕ = 0.0
   q_max = 2*pi/3
   q_step = 0.0075
@@ -293,19 +293,21 @@ let
   elements_class = [("Sx", "Sx", "G_{xx}"), ("Sx", "Sy", "G_{xy}"), ("Sx", "Sz", "G_{xz}"),
     ("Sy", "Sx", "G_{yx}"), ("Sy", "Sy", "G_{yy}"), ("Sy", "Sz", "G_{yz}"),
     ("Sz", "Sx", "G_{zx}"), ("Sz", "Sy", "G_{zy}"), ("Sz", "Sz", "G_{zz}")]
-  # Are we interested in ferromagnetically polarized states?  
+
+  # ferromagnetic polarised states need to be treated with extra care: see calculate_classical_structureFactor() for detail 
   ferromagnetic = true
 
-  output_dir = "kd_tree_approach/out"
+  output_dir = joinpath("kd_tree_approach","out")
   if !isdir(output_dir)
     mkpath(output_dir)
   end
-
-  f = h5open("kd_tree_approach/0_0_orig.h5", "r")
+  data_dir = joinpath("kd_tree_approach","states")
+  
+  f = h5open(joinpath(data_dir,"C0_0_orig.h5"),"r")
   ψ₁ = read(f, "Psi", MPS)
   close(f)
 
-  f = h5open("kd_tree_approach/0_0_conj.h5", "r")
+  f = h5open(joinpath(data_dir,"C0_0_conj.h5"),"r")
   ψ₂ = read(f, "Psi_c", MPS)
   close(f)
 
@@ -318,18 +320,18 @@ let
     Ψ = normalize(Ψ)
   end  
   
-  # @time for (op1, op2, plot_title) in elements
-  #   println("Calculating structure factor $plot_title ...")
-  #   qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm = calculate_structureFactor(lattice, Ψ, q_max, q_step, op1, op2)
+  @time for (op1, op2, plot_title) in elements
+    println("Calculating structure factor $plot_title ...")
+    qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm = calculate_structureFactor(lattice, Ψ, q_max, q_step, op1, op2)
 
-  #   # Save data to CSV files
-  #   csv_filename = joinpath(output_dir, "$(plot_title).csv")
-  #   open(csv_filename, "w") do file
-  #     writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values_real), vec(S_values_imag), vec(S_values_norm)), ',')
-  #   end
+    # Save data to CSV files
+    csv_filename = joinpath(output_dir, "$(plot_title).csv")
+    open(csv_filename, "w") do file
+      writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values_real), vec(S_values_imag), vec(S_values_norm)), ',')
+    end
 
-  #   println("Data for $plot_title saved to $csv_filename")
-  # end
+    println("Data for $plot_title saved to $csv_filename")
+  end
 
   @time for (op1, op2, plot_title) in elements_class
     println("Calculating gamma factor $plot_title ...")
