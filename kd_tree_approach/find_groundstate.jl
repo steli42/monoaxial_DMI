@@ -94,7 +94,7 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
         alpha_axis::Int64, pinch_hole::Bool)
 
     Sv = ["Sx", "Sy", "Sz"] 
-    B = [0.0, 0.0, Bcr]
+    B = [0.0*Bcr, 0.0*Bcr, Bcr]
     if Bcr == 0.0
         e_z = [0.0, 0.0, 1.0] 
     else
@@ -244,7 +244,7 @@ let
     R = 4.5
     ecc = 1.0
     sweep_count = 100
-    M = 1 
+    M = 2 
     cutoff_tol = 1e-12
     E_tol = 1e-8
     oplvl = 1.0
@@ -264,10 +264,11 @@ let
     α_values_neg = sort(map(x -> -x, α_values_pos))
 
     base_dir = "kd_tree_approach"
-    original_dir = joinpath(base_dir, "states", "original")
-    conjugated_dir = joinpath(base_dir, "states", "conjugated")
-    isdir(original_dir) || mkdir(original_dir)
-    isdir(conjugated_dir) || mkdir(conjugated_dir)
+    states_dir = joinpath(base_dir,"states")
+    original_dir = joinpath(states_dir, "original")
+    conjugated_dir = joinpath(states_dir, "conjugated")
+    mkpath(original_dir)
+    mkpath(conjugated_dir)
     
     # construct quantum and classical lattice sites
     geom = "rectangular"  #at this point triangular does not work
@@ -387,12 +388,12 @@ let
         println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
 
         # Save MPS
-        file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_original.h5")
+        file_path = joinpath(states_dir, "$(formatted_alpha)_orig.h5")
         psi_file = h5open(file_path, "w")
         write(psi_file, "Psi", ψ)
         close(psi_file)
 
-        file_path = joinpath(base_dir, "$(formatted_alpha)_Mag2D_conjugated.h5")
+        file_path = joinpath(states_dir, "$(formatted_alpha)_conj.h5")
         psi_file_conj = h5open(file_path,"w")
         write(psi_file_conj,"Psi_c",ψ_c)
         close(psi_file_conj)

@@ -283,7 +283,7 @@ end
 let
 
   Lx, Ly = 15, 15
-  c = 0.0
+  c = 1/sqrt(2)
   ϕ = 0.0
   q_max = 2*pi/3
   q_step = 0.0075
@@ -294,10 +294,11 @@ let
     ("Sy", "Sx", "G_{yx}"), ("Sy", "Sy", "G_{yy}"), ("Sy", "Sz", "G_{yz}"),
     ("Sz", "Sx", "G_{zx}"), ("Sz", "Sy", "G_{zy}"), ("Sz", "Sz", "G_{zz}")]
 
+  # !!! CAREFUL ABOUT THE FERRO FLAG !!!  
   # ferromagnetic polarised states need to be treated with extra care: see calculate_classical_structureFactor() for detail 
-  ferromagnetic = true
+  ferromagnetic = false
 
-  output_dir = joinpath("kd_tree_approach","out")
+  output_dir = joinpath("kd_tree_approach","out_$(c)")
   if !isdir(output_dir)
     mkpath(output_dir)
   end
