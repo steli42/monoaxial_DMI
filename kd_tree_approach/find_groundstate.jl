@@ -93,12 +93,15 @@ function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64
         nn_idxs_QQ::Vector{Vector{Int}}, nn_idxs_QC::Vector{Vector{Int}}, Bcr::Float64, J::Float64, D::Float64, α::Float64,
         alpha_axis::Int64, pinch_hole::Bool)
 
+    ϕ = π/2
+    θ = 0.0
     Sv = ["Sx", "Sy", "Sz"] 
-    B = [0.0*Bcr, 0.0*Bcr, Bcr]
+    B = Bcr * [sin(θ)*cos(ϕ), sin(θ)*sin(ϕ), cos(θ)]
+    # e_z gives the direction of polarised boundary, Bcr = 0.0 is just a limit case that we sometimes use to benchmark calculations
     if Bcr == 0.0
-        e_z = [0.0, 0.0, 1.0] 
+        e_z = [sin(θ)*cos(ϕ), sin(θ)*sin(ϕ), cos(θ)] 
     else
-        e_z = [0.0, 0.0, -sign(Bcr)] #the polarised spins are oriented opposite the field 
+        e_z = -sign(Bcr) * [sin(θ)*cos(ϕ), sin(θ)*sin(ϕ), cos(θ)] #the polarised spins are oriented opposite the field 
     end         
 
     ampo = OpSum()
@@ -244,8 +247,8 @@ let
     R = 4.5
     ecc = 1.0
     sweep_count = 100
-    M = 2 
-    cutoff_tol = 1e-12
+    M = 32 
+    cutoff_tol = 1e-8
     E_tol = 1e-8
     oplvl = 1.0
     isAdiabatic = true
@@ -317,7 +320,6 @@ let
     Energies = []
 
     ψ₀, sites = fetch_initial_state(case, lattice_Q, D, αₘ, w, R, ecc)
-
     for α in α_values_pos 
 
         H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α, alpha_axis, pinch_hole)
@@ -403,7 +405,6 @@ let
     end
 
     ψ₀, sites = fetch_initial_state(case,lattice_Q, D, -αₘ, w, R, ecc)
-
     for α in α_values_neg
 
         H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, Bcr, J, D, α, alpha_axis, pinch_hole)
