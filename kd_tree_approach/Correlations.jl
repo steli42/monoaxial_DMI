@@ -283,7 +283,7 @@ let
   ("Sz", "Sx", "G_{zx}"), ("Sz", "Sy", "G_{zy}"), ("Sz", "Sz", "G_{zz}")]
   
   # !!! CAREFUL ABOUT THE FERRO FLAG !!!  
-  # ferromagnetic polarised states need to be treated with extra care: see calculate_classical_structureFactor() for detail 
+  # ferromagnetic polarised states need to be treated with extra care: see gamma_matrix() for detail 
   ferromagnetic = false
   
   @time for c in [0.0, 1/sqrt(2), 1.0]
