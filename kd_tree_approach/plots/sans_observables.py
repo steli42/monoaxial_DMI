@@ -17,7 +17,7 @@ if __name__ == "__main__":
     qx_min = -2*np.pi/3
     qx_max = -qx_min
     color_map = "RdBu_r" 
-    base = os.path.join("data","PS_structure_factors")
+    base = os.path.join("data","MPS_axis1_rot_diag")
     
     plot_titles_Q = ["S_{xx}", "S_{xy}", "S_{xz}",
                     "S_{yx}", "S_{yy}", "S_{yz}",
@@ -43,25 +43,25 @@ if __name__ == "__main__":
         plot_differential_cross_section(data_dir, output_image, qx_min, qx_max, S_elements=plot_titles_Q, 
                                         polarised=True, cmap=color_map, vmin=None, vmax=None, log_scale=False)
         
-        output_image = os.path.join(data_dir,"pol_connected_cross_section.jpg") 
-        plot_connected_cross_section(data_dir, output_image, qx_min, qx_max, S_elements1=plot_titles_Q, S_elements2=plot_titles_C, 
-                                        polarised=True, cmap=color_map, vmin=None, vmax=None, log_scale=False)
+        # output_image = os.path.join(data_dir,"pol_connected_cross_section.jpg") 
+        # plot_connected_cross_section(data_dir, output_image, qx_min, qx_max, S_elements1=plot_titles_Q, S_elements2=plot_titles_C, 
+        #                                 polarised=True, cmap=color_map, vmin=None, vmax=None, log_scale=False)
         
-        output_image = os.path.join(data_dir,"unpol_connected_cross_section.jpg") 
-        plot_connected_cross_section(data_dir, output_image, qx_min, qx_max, S_elements1=plot_titles_Q, S_elements2=plot_titles_C, 
-                                        polarised=False, cmap=color_map, vmin=None, vmax=None, log_scale=False)
+        # output_image = os.path.join(data_dir,"unpol_connected_cross_section.jpg") 
+        # plot_connected_cross_section(data_dir, output_image, qx_min, qx_max, S_elements1=plot_titles_Q, S_elements2=plot_titles_C, 
+        #                                 polarised=False, cmap=color_map, vmin=None, vmax=None, log_scale=False)
 
-        output_image = os.path.join(data_dir,"C_structure_factors.jpg") 
-        plot_structure_factors(data_dir, plot_titles_C, output_image, norm_const, qx_min, qx_max, 
-                            data_type='Norm', cmap=color_map, vmin=0, vmax=1000, log_scale=False)
+        # output_image = os.path.join(data_dir,"C_structure_factors.jpg") 
+        # plot_structure_factors(data_dir, plot_titles_C, output_image, norm_const, qx_min, qx_max, 
+        #                     data_type='Norm', cmap=color_map, vmin=0, vmax=1000, log_scale=False)
 
-        output_image = os.path.join(data_dir,"C_unpol_cross_section.jpg") 
-        plot_differential_cross_section(data_dir, output_image, qx_min, qx_max, S_elements=plot_titles_C, 
-                                        polarised=False, cmap=color_map, vmin=None, vmax=None, log_scale=False)
+        # output_image = os.path.join(data_dir,"C_unpol_cross_section.jpg") 
+        # plot_differential_cross_section(data_dir, output_image, qx_min, qx_max, S_elements=plot_titles_C, 
+        #                                 polarised=False, cmap=color_map, vmin=None, vmax=None, log_scale=False)
 
-        output_image = os.path.join(data_dir,"C_pol_cross_section.jpg") 
-        plot_differential_cross_section(data_dir, output_image, qx_min, qx_max, S_elements=plot_titles_C, 
-                                        polarised=True, cmap=color_map, vmin=None, vmax=None, log_scale=False)
+        # output_image = os.path.join(data_dir,"C_pol_cross_section.jpg") 
+        # plot_differential_cross_section(data_dir, output_image, qx_min, qx_max, S_elements=plot_titles_C, 
+        #                                 polarised=True, cmap=color_map, vmin=None, vmax=None, log_scale=False)
 
  
     custom_labels = [r"$c=0.0$", r"$c=1/\sqrt{2}$", r"$c=1.0$"]  
@@ -71,11 +71,11 @@ if __name__ == "__main__":
     plot_radial_averages(data_dirs, custom_labels, num_bins=160, S_elements=plot_titles_Q, 
                          polarised=False, normalised=False, log_log=True, output_image=os.path.join(base,"Q_unpol_radial_averages.jpg"))
     
-    plot_radial_averages(data_dirs, custom_labels, num_bins=160, S_elements=plot_titles_C, 
-                         polarised=True, normalised=False, log_log=True, output_image=os.path.join(base,"C_pol_radial_averages.jpg"))
+    # plot_radial_averages(data_dirs, custom_labels, num_bins=160, S_elements=plot_titles_C, 
+    #                      polarised=True, normalised=False, log_log=True, output_image=os.path.join(base,"C_pol_radial_averages.jpg"))
 
-    plot_radial_averages(data_dirs, custom_labels, num_bins=160, S_elements=plot_titles_C, 
-                         polarised=False, normalised=False, log_log=True, output_image=os.path.join(base,"C_unpol_radial_averages.jpg"))
+    # plot_radial_averages(data_dirs, custom_labels, num_bins=160, S_elements=plot_titles_C, 
+    #                      polarised=False, normalised=False, log_log=True, output_image=os.path.join(base,"C_unpol_radial_averages.jpg"))
     
     end_time = time.time()
     elapsed_time = end_time - start_time
