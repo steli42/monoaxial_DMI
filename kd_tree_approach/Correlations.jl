@@ -192,26 +192,14 @@ function my_correlation_matrix(psi::MPS, _Op1, _Op2; sites=1:length(psi), site_r
 end
 
 function gamma_matrix(psi::MPS, S1::String, S2::String, ferromagnetic::Bool)
-  if ferromagnetic == true 
-    # For a real polarized state, the expect() goes crazy so we need to create the extra flag
-    # We need to handle "Sy" differently since acting with a complex MPO on a real MPS yields conversion errors (hopefully ITensors fix this one day)
-    # Actually, the very same thing happens when using the correlation_matrix from ITensors so we needed to adapt our own version called my_correlation_matrix
-    if S1 == "Sy"
-      M1 = expect(complex(psi), S1)
-    else
-      M1 = expect(psi, S1)
-    end
+  
+  # For a real polarized state, the expect() goes crazy so we need to create the extra flag.
+  # We need to handle "Sy" differently since acting with a complex MPO on a real MPS yields conversion errors (hopefully ITensors fix this one day)
+  # Actually, the very same thing happens when using the correlation_matrix from ITensors 
+  # so we needed to adapt our own version called my_correlation_matrix
 
-    if S2 == "Sy"
-      M2 = expect(complex(psi), S2)
-    else
-      M2 = expect(psi, S2)
-    end
-
-  else
-    M1 = expect(psi, S1)
-    M2 = expect(psi, S2)
-  end
+  M1 = S1 == "Sy" && ferromagnetic ? expect(complex(psi),S1) : expect(psi,S1)
+  M2 = S2 == "Sy" && ferromagnetic ? expect(complex(psi),S2) : expect(psi,S2)
 
   gamma = zeros(length(M1), length(M2))
 
@@ -241,9 +229,9 @@ function calculate_structureFactor(lattice::Array{Float64,2}, ψ::MPS, q_max, q_
         q = [q_x, q_y]
         S += corr[idxi, idxj] * exp(-im * dot(q, r_i - r_j))
       end
-      S_values_real[qy_index, qx_index] = real(S)
-      S_values_imag[qy_index, qx_index] = imag(S)
-      S_values_norm[qy_index, qx_index] = abs(S)
+      S_values_real[qx_index, qy_index] = real(S)
+      S_values_imag[qx_index, qy_index] = imag(S)
+      S_values_norm[qx_index, qy_index] = abs(S)
     end  
   end
 
@@ -270,9 +258,9 @@ function calculate_classical_structureFactor(lattice::Array{Float64,2}, ψ::MPS,
         q = [q_x, q_y]
         s += gamma[idxi, idxj] * exp(-im * dot(q, r_i - r_j))
       end
-      s_values_real[qy_index, qx_index] = real(s)
-      s_values_imag[qy_index, qx_index] = imag(s)
-      s_values_norm[qy_index, qx_index] = abs(s)
+      s_values_real[qx_index, qy_index] = real(s)
+      s_values_imag[qx_index, qy_index] = imag(s)
+      s_values_norm[qx_index, qy_index] = abs(s)
     end  
   end
 
@@ -283,68 +271,72 @@ end
 let
 
   Lx, Ly = 15, 15
-  c = 1/sqrt(2)
   ϕ = 0.0
   q_max = 2*pi/3
-  q_step = 0.0075
-  elements = [("Sx", "Sx", "S_{xx}"), ("Sx", "Sy", "S_{xy}"), ("Sx", "Sz", "S_{xz}"),
-    ("Sy", "Sx", "S_{yx}"), ("Sy", "Sy", "S_{yy}"), ("Sy", "Sz", "S_{yz}"),
-    ("Sz", "Sx", "S_{zx}"), ("Sz", "Sy", "S_{zy}"), ("Sz", "Sz", "S_{zz}")]
-  elements_class = [("Sx", "Sx", "G_{xx}"), ("Sx", "Sy", "G_{xy}"), ("Sx", "Sz", "G_{xz}"),
-    ("Sy", "Sx", "G_{yx}"), ("Sy", "Sy", "G_{yy}"), ("Sy", "Sz", "G_{yz}"),
-    ("Sz", "Sx", "G_{zx}"), ("Sz", "Sy", "G_{zy}"), ("Sz", "Sz", "G_{zz}")]
+  q_step = 0.025 #0.0075
 
+  elements = [("Sx", "Sx", "S_{xx}"), ("Sx", "Sy", "S_{xy}"), ("Sx", "Sz", "S_{xz}"),
+  ("Sy", "Sx", "S_{yx}"), ("Sy", "Sy", "S_{yy}"), ("Sy", "Sz", "S_{yz}"),
+  ("Sz", "Sx", "S_{zx}"), ("Sz", "Sy", "S_{zy}"), ("Sz", "Sz", "S_{zz}")]
+  elements_class = [("Sx", "Sx", "G_{xx}"), ("Sx", "Sy", "G_{xy}"), ("Sx", "Sz", "G_{xz}"),
+  ("Sy", "Sx", "G_{yx}"), ("Sy", "Sy", "G_{yy}"), ("Sy", "Sz", "G_{yz}"),
+  ("Sz", "Sx", "G_{zx}"), ("Sz", "Sy", "G_{zy}"), ("Sz", "Sz", "G_{zz}")]
+  
   # !!! CAREFUL ABOUT THE FERRO FLAG !!!  
   # ferromagnetic polarised states need to be treated with extra care: see gamma_matrix() for detail 
   ferromagnetic = false
-
-  output_dir = joinpath("kd_tree_approach","out_$(c)")
-  if !isdir(output_dir)
-    mkpath(output_dir)
-  end
-  data_dir = joinpath("kd_tree_approach","states")
   
-  f = h5open(joinpath(data_dir,"C0_0_orig.h5"),"r")
-  ψ₁ = read(f, "Psi", MPS)
-  close(f)
+  @time for c in [0.0, 1/sqrt(2), 1.0]
+    
+    output_dir = joinpath("kd_tree_approach","out_$(c)")
+    if !isdir(output_dir)
+      mkpath(output_dir)
+    end
+    data_dir = joinpath("kd_tree_approach","states")
+    
+    f = h5open(joinpath(data_dir,"Q0_0_orig.h5"),"r")
+    ψ₁ = read(f, "Psi", MPS)
+    close(f)
 
-  f = h5open(joinpath(data_dir,"C0_0_conj.h5"),"r")
-  ψ₂ = read(f, "Psi_c", MPS)
-  close(f)
+    f = h5open(joinpath(data_dir,"Q0_0_conj.h5"),"r")
+    ψ₂ = read(f, "Psi_c", MPS)
+    close(f)
 
-  Ψ = c * exp(im * ϕ) * ψ₂ + sqrt(1 - c^2) * ψ₁
-  lattice = build_lattice(Lx, Ly, "rectangular")
+    Ψ = c * exp(im * ϕ) * ψ₂ + sqrt(1 - c^2) * ψ₁
+    lattice = build_lattice(Lx, Ly, "rectangular")
 
-  if ferromagnetic == true
-    sites = siteinds(Ψ)
-    Ψ = MPS(sites,["Up" for s in sites])
-    Ψ = normalize(Ψ)
-  end  
-  
-  @time for (op1, op2, plot_title) in elements
-    println("Calculating structure factor $plot_title ...")
-    qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm = calculate_structureFactor(lattice, Ψ, q_max, q_step, op1, op2)
+    if ferromagnetic == true
+      sites = siteinds(Ψ)
+      Ψ = MPS(sites,["Up" for s in sites])
+      Ψ = normalize(Ψ)
+    end  
+    
+    for (op1, op2, plot_title) in elements
+      println("Calculating structure factor $plot_title ...")
+      qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm = calculate_structureFactor(lattice, Ψ, q_max, q_step, op1, op2)
 
-    # Save data to CSV files
-    csv_filename = joinpath(output_dir, "$(plot_title).csv")
-    open(csv_filename, "w") do file
-      writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values_real), vec(S_values_imag), vec(S_values_norm)), ',')
+      # Save data to CSV files
+      csv_filename = joinpath(output_dir, "$(plot_title).csv")
+      open(csv_filename, "w") do file
+        writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values_real), vec(S_values_imag), vec(S_values_norm)), ',')
+      end
+
+      println("Data for $plot_title saved to $csv_filename")
     end
 
-    println("Data for $plot_title saved to $csv_filename")
-  end
+    for (op1, op2, plot_title) in elements_class
+      println("Calculating gamma factor $plot_title ...")
+      qx_mesh, qy_mesh, s_values_real, s_values_imag, s_values_norm = calculate_classical_structureFactor(lattice, Ψ, q_max, q_step, op1, op2, ferromagnetic)
 
-  @time for (op1, op2, plot_title) in elements_class
-    println("Calculating gamma factor $plot_title ...")
-    qx_mesh, qy_mesh, s_values_real, s_values_imag, s_values_norm = calculate_classical_structureFactor(lattice, Ψ, q_max, q_step, op1, op2, ferromagnetic)
+      # Save data to CSV files
+      csv_filename = joinpath(output_dir, "$(plot_title).csv")
+      open(csv_filename, "w") do file
+        writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(s_values_real), vec(s_values_imag), vec(s_values_norm)), ',')
+      end
 
-    # Save data to CSV files
-    csv_filename = joinpath(output_dir, "$(plot_title).csv")
-    open(csv_filename, "w") do file
-      writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(s_values_real), vec(s_values_imag), vec(s_values_norm)), ',')
+      println("Data for $plot_title saved to $csv_filename")
     end
 
-    println("Data for $plot_title saved to $csv_filename")
   end
 
 end

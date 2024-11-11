@@ -1,71 +1,38 @@
 using ITensors, Printf, PyPlot, HDF5, LinearAlgebra
 pygui(true)
-
-function calculate_TopoCharge(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64})
-
-  N = round(Int, sqrt(length(Mx)))
-
-  coor_vec = Tuple{Tuple{Float64,Float64},Vector{Float64}}[]
-  triangles = Tuple{Tuple{Tuple{Float64,Float64},Tuple{Float64,Float64},Tuple{Float64,Float64}},Tuple{Vector{Float64},Vector{Float64},Vector{Float64}}}[]
-  ρ = Float64[]
-
-  for (j, mx) in enumerate(Mx)
-    x, y = (j - 1.0) ÷ N, (j - 1.0) % N
-    M_norm = sqrt(Mx[j]^2 + My[j]^2 + Mz[j]^2)
-    M = [Mx[j], My[j], Mz[j]] / M_norm
-    push!(coor_vec, ((x, y), M))
-  end
-
-  for i in 1:N-1, j in 1:N-1
-    p1, v1 = coor_vec[(i-1)*N+j]
-    p2, v2 = coor_vec[(i-1)*N+j+1]
-    p3, v3 = coor_vec[i*N+j+1]
-
-    push!(triangles, ((p1, p2, p3), (v1, v2, v3)))
-
-    p4, v4 = coor_vec[i*N+j]
-    push!(triangles, ((p1, p3, p4), (v1, v3, v4)))
-  end
-
-  for (coordinates, vectors) in triangles
-    V1, V2, V3 = vectors
-    L1, L2, L3 = coordinates
-
-    Latt1x, Latt1y = L1
-    Latt2x, Latt2y = L2
-    Latt3x, Latt3y = L3
-
-    Latt1 = [Latt2x - Latt1x, Latt2y - Latt1y]
-    Latt2 = [Latt3x - Latt2x, Latt3y - Latt2y]
-    S = sign(Latt1[1] * Latt2[2] - Latt1[2] * Latt2[1])
-
-    X = 1.0 + dot(V1, V2) + dot(V2, V3) + dot(V3, V1)
-    Y = dot(V1, cross(V2, V3))
-
-    A = 2 * S * angle(X + im * Y)
-
-    push!(ρ, A)
-  end
-
-  Q = sum(ρ) / (4 * pi)
-  return Q
-end
-
+include("mps_aux.jl")
 
 let
-
-  f = h5open("kd_tree_approach/0_0_orig.h5", "r")
+  
+  f = h5open("kd_tree_approach/states/Q0_0_orig.h5", "r")
   ψ₁ = read(f, "Psi", MPS)
   close(f)
 
-  f = h5open("kd_tree_approach/0_0_conj.h5", "r")
+  f = h5open("kd_tree_approach/states/Q0_0_conj.h5", "r")
   ψ₂ = read(f, "Psi_c", MPS)
   close(f)
 
-  c₁ = 1/sqrt(2)
-  ϕ = 0.0 * pi / 4
+  @show inner(ψ₁,ψ₁)
+  @show inner(ψ₂,ψ₂)
+  @show inner(ψ₁, ψ₂)
 
-  Ψ = c₁ * exp(-im * ϕ) * ψ₁ + sqrt(1 - c₁^2) * ψ₂
+  c₁ = 0
+  ϕ = 0
+  φ = π/2 
+
+  Ψ = c₁ * exp(-im * ϕ) * ψ₂ + sqrt(1 - c₁^2) * ψ₁
+  # psi_new = copy(Ψ)    # This block applies sigma_y to each site; this flipping the sign of x and z projections
+  # for n in eachindex(Ψ)
+  #   sym = 2 * op("Sy", siteinds(Ψ), n)    # factor 2 changes S to sigma
+  #   psi_new[n] = sym * Ψ[n]
+  # end
+  # Ψ = noprime(psi_new)
+
+  θφ = zeros(2,length(siteinds(Ψ))) # This block of code rotates each spin by angle φ 
+  for id in axes(θφ,2)
+    θφ[2,id] = φ
+  end
+  Ψ = rotate_MPS(Ψ,θφ)
 
   Mx = expect(Ψ, "Sx")
   My = expect(Ψ, "Sy")
@@ -78,17 +45,18 @@ let
   for (j, mz) in enumerate(Mz)
     L = sqrt(length(Mz))
     t = Mz
-    x, y, z = (j - 1.0) ÷ L - (L-1)/2, (j - 1.0) % L - (L-1)/2, 0.0
+    r = [(j - 1.0) ÷ L - (L-1)/2, (j - 1.0) % L - (L-1)/2]
+    r = ez_rotation(r, -φ)   # if we rotate spins by φ then position must be rotated by -φ 
     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r")
     vmin = minimum(t)
     vmax = maximum(t)
     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
-    ax.quiver(x, y, z, Mx[j], My[j], Mz[j], normalize=true, color=cmap(norm(t[j])))
+    ax.quiver(r[1], r[2], 0.0, Mx[j], My[j], Mz[j], normalize=true, color=cmap(norm(t[j])))
     plt.xlabel("x")
     plt.ylabel("y")
 
-    @printf f "%f," x
-    @printf f "%f," y
+    @printf f "%f," r[1]
+    @printf f "%f," r[2]
     @printf f "%f," 0.0
     @printf f "%f," Mx[j]
     @printf f "%f," My[j]
@@ -101,6 +69,4 @@ let
 
   Q = calculate_TopoCharge(Mx, My, Mz)
   @show Q
-  @show(norm(inner(ψ₁, ψ₂)))
-
 end
