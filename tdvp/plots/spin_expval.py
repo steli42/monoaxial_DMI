@@ -16,13 +16,13 @@ plt.rc('text', usetex=True)
 plt.rc('text.latex',preamble='\\usepackage{bm}')
 
 fs = 850  # 9 X 9
-# fs = 1200  # 13 X 13
-fs = 1500  # 15 X 15
+fs = 1000  # 13 X 13
+# fs = 1500  # 15 X 15
 # fs = 1650  # 19 X 19
 # fs = 1800  # 21 X 21
 in_dir = '.'
 
-use_vlad_colorcode = True
+use_vlad_colorcode = False
 
 mkr = 's'
 my_dpi = 300
@@ -65,7 +65,7 @@ for (idfn, fn) in enumerate(fns):
     if (not('approximation' in fn) and os.path.isfile(f'{fn_repl}/energies.csv')):
         data_energies = pd.read_csv(f'{fn_repl}/energies.csv')
 
-    x, y, Sx, Sy, Sz = data['x'], data['y'], data['S_x'], data['S_y'], -data['S_z']
+    x, y, Sx, Sy, Sz = data['x'], data['y'], data['S_x'], data['S_y'], data['S_z']
     S = (Sx**2 + Sy**2 + Sz**2)**(1/2)
     Ox, Oy, Oz = Sx/S, Sy/S, Sz/S
 

@@ -175,7 +175,7 @@ function time_evolve()
             w = p["SKX_w"]
             R = p["SKX_R"]
             d, _, ϕ = c2s(rlat)
-            θsk(l) = 2 * atan(sinh(l / w), sinh(R / w))
+            θsk(l) = (sign(p["B"][3])-1)*π/2 - 2 * atan(sinh(l / w), sinh(R / w))
             θ = θsk(d)
             if abs(θ/π) > 0.17
                 θϕ[1, i] += θ
@@ -196,7 +196,7 @@ function time_evolve()
     normalize!(psi0)
 
     sites = siteinds(psi0)
-    vac = MPS(sites, ["Dn" for s in sites])
+    vac = MPS(sites, ["Up" for s in sites])
 
     𝐦 = zeros(Float64, 3, length(aux_lattices), size(aux_lattices[1], 2))
     if p["boundary_conditions"] == "classical_environment"
@@ -225,6 +225,8 @@ function time_evolve()
     @info "Generate MPO's"
     H = generate_full_MPO(sites, 𝐦, p, lattice, aux_lattices, nn_idxs, nn_pbc_idxs)
 
+    # Hpolarized = polarized_MPO(sites)
+
     normalize!(vac)
 
     pol_energy = inner(vac', H, vac)
@@ -247,18 +249,9 @@ function time_evolve()
 
     @show maxlinkdim(H)
     
-    energy, psi = dmrg(H+Hpin, psi, nsweeps=p["2sweeps"], maxdim=p["M"])
+    energy, psi = dmrg(H+Hpin, [vac], psi, nsweeps=p["2sweeps"], maxdim=p["M"])
     energy, psi = dmrg1(H+Hpin, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
     # @show inner(psi', H, psi)
-
-    S = ["Id", "Sx", "Sy", "Sz"]
-    corrs = Dict()
-    for s1 in S, s2 in S
-        @show s1, s2
-        corrs[s1, s2] = correlation_matrix(psi0, s1, s2)
-    end
-    df = corr_to_df(lattice, corrs, p)
-    CSV.write("$(p["io_dir"])/$(p["csv_mps_corr"])", df)
 
     f = h5open("$(p["io_dir"])/$(p["hdf5_final"])", "w")
     write(f, "psi", psi)
@@ -271,6 +264,15 @@ function time_evolve()
     spins = reduce(vcat, transpose.(lobs))
     df = lobs_to_df(lattice, aux_lattices, spins, 𝐦, p)
     CSV.write("$(p["io_dir"])/$(p["csv_mps"])", df)
+
+    S = ["Id", "Sx", "Sy", "Sz"]
+    corrs = Dict()
+    for s1 in S, s2 in S
+        @show s1, s2
+        corrs[s1, s2] = correlation_matrix(psi0, s1, s2)
+    end
+    df = corr_to_df(lattice, corrs, p)
+    CSV.write("$(p["io_dir"])/$(p["csv_mps_corr"])", df)
 
     H = H + p["Bgrad_slope"]*Hgrad
 
