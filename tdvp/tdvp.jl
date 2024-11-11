@@ -152,7 +152,7 @@ function time_evolve()
         psi0 = MPS(sites, [p["initial_MPS"] for s in sites]) * 1im
     elseif p["initial_MPS"] == "SKX"
         @info "Create $(p["initial_MPS"]) config..."
-        vac = MPS(sites, ["Up" for s in sites])
+        vac = MPS(sites, ["Dn" for s in sites])
 
         yc = mean(lattice[2, :])  # average y position
         θϕ = ones(2, size(lattice, 2))
@@ -179,7 +179,7 @@ function time_evolve()
             θ = θsk(d)
             if abs(θ/π) > 0.17
                 θϕ[1, i] += θ
-                θϕ[2, i] += p["phi_sign"]*(ϕ - sign(p["D"][3])*sign(p["B"][3])*π/2)
+                θϕ[2, i] += p["phi_sign"]*(ϕ + sign(p["D"][3])*sign(p["B"][3])*π/2)
             end
         end
         psi0 = rotateMPS(vac, θϕ)
@@ -196,6 +196,7 @@ function time_evolve()
     normalize!(psi0)
 
     sites = siteinds(psi0)
+    vac = MPS(sites, ["Dn" for s in sites])
 
     𝐦 = zeros(Float64, 3, length(aux_lattices), size(aux_lattices[1], 2))
     if p["boundary_conditions"] == "classical_environment"
@@ -210,6 +211,7 @@ function time_evolve()
     # S = ["Id", "Sx", "Sy", "Sz"]
     # corrs = Dict()
     # for s1 in S, s2 in S
+    #     @show s1, s2
     #     corrs[s1, s2] = correlation_matrix(psi0, s1, s2)
     # end
     # df = corr_to_df(lattice, corrs, p)
@@ -223,8 +225,10 @@ function time_evolve()
     @info "Generate MPO's"
     H = generate_full_MPO(sites, 𝐦, p, lattice, aux_lattices, nn_idxs, nn_pbc_idxs)
 
-    print(unique(lattice[2,:]))
-    @info "MPO's generated."
+    normalize!(vac)
+
+    pol_energy = inner(vac', H, vac)
+    @info "MPO's generated. Polarized energy: $pol_energy"
 
     Hpin = generate_pinning_zeeman_MPO(sites, p, lattice, aux_lattices, nn_idxs, nn_pbc_idxs)
 
@@ -233,18 +237,28 @@ function time_evolve()
     println("Energy: $ene")
 
     sweeps = Sweeps(p["sweeps"])  # initialize sweeps object
-    maxdim!(sweeps, 1)  # fix maximum link dimension to one
+    maxdim!(sweeps, p["M"])  # fix maximum link dimension to one
     cutoff!(sweeps, p["cutoff_tol"])  # set maximum link dimension
     obs = DMRGObserver(; energy_tol=p["energy_tol"])
 
-    psi = psi0
+    psi = copy(psi0)
 
     Hgrad = generate_zeeman_gradient_MPO(sites, p, lattice)
 
     @show maxlinkdim(H)
     
+    energy, psi = dmrg(H+Hpin, psi, nsweeps=p["2sweeps"], maxdim=p["M"])
     energy, psi = dmrg1(H+Hpin, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
-    @show inner(psi', H, psi)
+    # @show inner(psi', H, psi)
+
+    S = ["Id", "Sx", "Sy", "Sz"]
+    corrs = Dict()
+    for s1 in S, s2 in S
+        @show s1, s2
+        corrs[s1, s2] = correlation_matrix(psi0, s1, s2)
+    end
+    df = corr_to_df(lattice, corrs, p)
+    CSV.write("$(p["io_dir"])/$(p["csv_mps_corr"])", df)
 
     f = h5open("$(p["io_dir"])/$(p["hdf5_final"])", "w")
     write(f, "psi", psi)
@@ -272,16 +286,15 @@ function time_evolve()
         "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin
     )
 
-    T = 6/p["Bgrad_slope"]
+    T = p["tmax"]
     psiT = tdvp(
         H,
-        -T * im,
+        T * im,
         psi;
         nsteps=p["tdvp_sweeps"],
         maxdim=p["M"],
         cutoff=p["cutoff_tol"],
         normalize=true,
-        reverse_step=true,
         outputlevel=1,
         (step_observer!)=obs,
         order=p["tdvp_order"],
@@ -310,15 +323,14 @@ function time_evolve()
     # end
     normalize!(psi)
     normalize!(psiT)
+    @show pol_energy
     @show inner(psi', H, psi)
     @show inner(psiT', H, psiT)
 
-    # lobs = [expect(psiT, s) for s in ["Sx", "Sy", "Sz"]]
-    # spins = reduce(vcat, transpose.(lobs))
-    # df = lobs_to_df(lattice, aux_lattices, spins, 𝐦, p)
-    # CSV.write("$(p["io_dir"])/$(p["csv_mps"])", df)
-
-    psi_ask = conj.(psi)
+    psi_ask = deepcopy(psi)
+    # psi_ask = MPS([idt > length(psi)÷2 ? conj.(t) : t for (idt,t) in enumerate(psi_ask)])
+    psi_ask = conj.(psi_ask)
+    normalize!(psi_ask)
     df = DataFrame()
     df[!, "E_sk"] = [real(inner(psi', H, psi))]
     df[!, "E_ask"] = [real(inner(psi_ask', H, psi_ask))]
@@ -327,6 +339,11 @@ function time_evolve()
     df[!, "<sk|ask>_re"] = [real(me)]
     df[!, "<sk|ask>_im"] = [imag(me)]
     CSV.write("$(p["io_dir"])/energy.csv", df)
+
+    # lobs = [expect(psi_ask, s) for s in ["Sx", "Sy", "Sz"]]
+    # spins = reduce(vcat, transpose.(lobs))
+    # df = lobs_to_df(lattice, aux_lattices, spins, 𝐦, p)
+    # CSV.write("$(p["io_dir"])/$(p["csv_mps"])", df)
 
     return
     return p, lattice, aux_lattices, onsite_idxs, nn_idxs, nn_pbc_idxs, energy

@@ -25,8 +25,9 @@ plt.rc('text.latex',preamble='\\usepackage{bm,braket}')
 
 ps = ['M2', 'M4', 'M8', 'M16', 'M32', 'M64']
 ps = ['M1', 'M2', 'M4', 'M8', 'M16', 'M32', 'M64']
+ps = ['M64']
 fns = []
-[fns.append(f'/Users/andreas/gits/monoaxial_stefan/tdvp/sk/series_lobs_{p}.csv')  for p in ps]
+[fns.append(f'/Users/andreas/gits/monoaxial_DMI/tdvp/sk/series_lobs_{p}.csv')  for p in ps]
 # [fns.append(f'/Users/andreas/gits/monoaxial_stefan/tdvp/ask/series_lobs_{p}.csv') for p in ps]
 print(fns)
 
@@ -50,6 +51,11 @@ for (idfn, fn) in enumerate(fns):
     axs[0].plot(ts, avs['S_z'], label=labels[idfn])
     axs[1].plot(ts, xcom, label=labels[idfn])
     # plt.plot(ts, ycom)
+    comdf = pd.DataFrame()
+    comdf['t'] = ts
+    comdf['xcom'] = xcom
+    comdf['ycom'] = ycom
+    comdf.to_csv('com.csv')
 axs[0].set_ylabel('$\\braket{\\hat S_{z}}$')
 axs[1].set_ylabel('position $x/a$')
 axs[1].set_xlabel('dimensionless time $t|J|$')

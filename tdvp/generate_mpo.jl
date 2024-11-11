@@ -12,6 +12,16 @@ function pairwise_interaction(p, Sv, id1, id2, dir)
     # DMI interaction
     # D = 0.5*p["D"]×dir  # standard interfacial DMI
     D = 0.5*p["D"][3]*dir  # standard interfacial DMI
+    # decompose DMI to e1, e2
+    # phi = π/4
+    # a1 = [ cos(phi), sin(phi), 0.0]
+    # a2 = [-sin(phi), cos(phi), 0.0]
+
+    # Da1 = dot(D,a1)
+    # Da2 = dot(D,a2)
+
+    # D = p["alpha"]*Da1*a1 + Da2*a2
+    
     D[p["alpha_ax"]] *= p["alpha"]
     # D = 0.5*p["D"]×dir[1]  # monoaxial interfacial DMI
     for i in eachindex(Sv),  j in eachindex(Sv),  k in eachindex(Sv)
