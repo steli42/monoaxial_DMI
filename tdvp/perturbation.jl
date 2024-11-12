@@ -1,7 +1,7 @@
 using LinearAlgebra, Optim
 
 let
-    fn = "/Users/andreas/gits/monoaxial_DMI/tdvp/skM64/state.h5"
+    fn = "/Users/andreas/gits/monoaxial_DMI/tdvp/skM32/state.h5"
 
     f = h5open(fn, "r")
     psi = read(f, "psi", MPS)
@@ -12,10 +12,12 @@ let
     psi2 = conj.(psi2)
     normalize!(psi2)
 
+    @show norm(imag.(psi[11])), norm(imag.(psi2[11]))
+
     @show inner(psi, psi2)
 
     for i=1:1
-        continue
+        # continue
         N = zeros(ComplexF64, (2,2))
 
         for (i1, s1) in enumerate([psi, psi2]), (i2, s2) in enumerate([psi, psi2])
@@ -36,6 +38,8 @@ let
         @show F.values
         @show inner(psi, psi2)
     end
+
+    @show norm(imag.(psi[11])), norm(imag.(psi2[11]))
 
     sites = siteinds(psi)
 

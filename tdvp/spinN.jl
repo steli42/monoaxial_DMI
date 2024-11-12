@@ -15,6 +15,7 @@ function generate_spin_matrices(;dim=2)
     # initialize spin matrices
     Sx = zeros(ComplexF64,dim,dim);
     Sy = zeros(ComplexF64,dim,dim);
+    Syre = zeros(ComplexF64,dim,dim);
     Sz = zeros(ComplexF64,dim,dim);
 
     spin = 0.5*(dim-1)
@@ -29,11 +30,13 @@ function generate_spin_matrices(;dim=2)
             if (idx + 1) == idy
                 Sx[idx,idy] += entryXY;
                 Sy[idx,idy] -= 1im * entryXY;
+                Syre[idx,idy] -= entryXY;
             end
 
             if idx == (idy + 1)
                 Sx[idx,idy] += entryXY;
                 Sy[idx,idy] += 1im * entryXY;
+                Syre[idx,idy] += entryXY;
             end
 
             if idx == idy
@@ -49,7 +52,7 @@ function generate_spin_matrices(;dim=2)
     Sp = Sx + 1im * Sy;
     Sm = Sx - 1im * Sy;
 
-    spin_matrices = Dict("Sx" => Sx, "Sy" => Sy, "Sz" => Sz, "S+" => Sp, "S-" => Sm, "Id" => Id)
+    spin_matrices = Dict("Sx" => Sx, "Sy" => Sy, "Syre" => Syre, "Sz" => Sz, "S+" => Sp, "S-" => Sm, "Id" => Id)
 
     # return spin matrices
     return spin_matrices
@@ -59,6 +62,7 @@ end
 _op(::OpName"Id", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["Id"]
 _op(::OpName"Sx", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["Sx"]
 _op(::OpName"Sy", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["Sy"]
+_op(::OpName"Syre", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["Syre"]
 _op(::OpName"Sz", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["Sz"]
 _op(::OpName"S+", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["S+"]
 _op(::OpName"S-", ::SiteType"S=N/2"; dim=2) = generate_spin_matrices(;dim=dim)["S-"]
