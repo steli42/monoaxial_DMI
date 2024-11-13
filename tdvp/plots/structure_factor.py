@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-fn = "tdvp/alphas/aa1da4dc-a106-11ef-8e43-b51a2eff0c08/corr.csv"
+fn = "tdvp/skM32/corr.csv"
 df = pd.read_csv(fn)
 data = df
 
@@ -21,11 +21,11 @@ for (lbl,p) in zip(['im','re'],[np.imag, np.real]):
     for o1 in obs:
         for o2 in obs:
             data[f'{o1}*{o2}'] = data[f'{o1}*{o2}_re'] + 1j*data[f'{o1}*{o2}_im']
-            data[f'{o1}*{o2}_conn'] = (data[f'{o1}*{o2}_re'] - data[f'{o1}*Id_re']*data[f'Id*{o2}_re'] + data[f'{o1}*Id_im']*data[f'Id*{o2}_im']) + 1j*(data[f'{o1}*{o2}_im'] - data[f'{o1}*Id_re']*data[f'Id*{o2}_im'] - data[f'{o1}*Id_im']*data[f'Id*{o2}_re'])
-            S = np.array([sum(data[f'{o1}*{o2}']*np.exp(1j*kx*(data["x'"]-data["x"]))*np.exp(1j*ky*(data["y'"]-data["y"]))) for kx in ks for ky in ks])
+            data[f'{o1}*{o2}_conn'] = data[f'{o1}*{o2}'] - data[f'{o1}*Id_re']*data[f'Id*{o2}_re']
+            S = np.array([sum(data[f'{o1}*{o2}_conn']*np.exp(1j*kx*(data["x'"]-data["x"]))*np.exp(1j*ky*(data["y'"]-data["y"]))) for kx in ks for ky in ks])
             print(o1,o2,lbl,min(p(S)),max(p(S)), sep='\t')
             Sab[o1,o2] = S
-            im = axs[i].imshow(np.reshape(p(S), (len(ks), len(ks))).T, cmap='viridis', interpolation='quadric', origin='lower', extent=[-1,1,-1,1])
+            im = axs[i].imshow(np.reshape(p(S), (len(ks), len(ks))).T, cmap='RdBu_r', interpolation='quadric', origin='lower', extent=[-1,1,-1,1])
             axs[i].text(0.08, 0.9, "$S_{"+f"{o1}{o2}".replace("S","")+"}$", transform=axs[i].transAxes, fontsize=6)
             axs[i].set_xticks([])
             axs[i].set_yticks([])
@@ -43,16 +43,16 @@ for (lbl,p) in zip(['im','re'],[np.imag, np.real]):
 fig, ax = plt.subplots()
 
 dsdO = 0*Sab[obs[0],obs[0]]
-for (a,o1) in enumerate(obs[0:1]):
-    for (b,o2) in enumerate(obs[0:1]):
+for (a,o1) in enumerate(obs[:2]):
+    for (b,o2) in enumerate(obs[:2]):
         dab = 0.0
         if o1==o2: dab=1.0
         dsdO += [(dab - qhat[a]*qhat[b])*Sab[o1,o2][idx] for (idx, qhat) in enumerate(qhats)]
-im = ax.imshow(np.reshape(np.real(dsdO), (len(ks), len(ks))).T, cmap='viridis', interpolation='quadric', origin='lower', extent=[-1,1,-1,1])
+im = ax.imshow(np.reshape(np.real(dsdO), (len(ks), len(ks))).T, cmap='RdBu_r', interpolation='quadric', origin='lower', extent=[-1,1,-1,1])
 print(min(np.imag(dsdO)),max(np.imag(dsdO)))
 ax.set_xlabel("$q_x/\pi$")
 ax.set_ylabel("$q_y/\pi$")
-# fig.colorbar(im, ax=ax, location='bottom', extend='both', pad=0.175, aspect=40)
+fig.colorbar(im, ax=ax, location='bottom', extend='both', pad=0.175, aspect=40)
 fn_repl = fn.replace('.csv',f'_scs.jpg')
 plt.tight_layout()
 plt.savefig(fn_repl, bbox_inches='tight', dpi=600, pad_inches=0)
