@@ -23,9 +23,9 @@
 #SBATCH --partition=batch
 #__________________________
 #SBATCH -N 33
-#SBATCH --ntasks-per-node 16
-#SBATCH --ntasks-per-socket 2
-#SBATCH -c 8  # multithreading per task : -c --cpus-per-task <n> request
+#SBATCH --ntasks-per-node 8
+#SBATCH --ntasks-per-socket 1
+#SBATCH -c 16  # multithreading per task : -c --cpus-per-task <n> request
 #__________________________
 #SBATCH -o logs/%x-%j.out  # log goes into logs/<jobname>-<jobid>.out
 # mkdir -p logs

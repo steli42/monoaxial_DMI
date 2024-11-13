@@ -8,7 +8,7 @@ def xyz(phi, r):
 
 # import matplotlib.pyplot as plt
 
-dir = "configs"
+dir = "tdvp/configs"
 dir_out = "/work/projects/tmqs_projects"
 if not os.path.isdir(dir):
     os.makedirs(dir)
@@ -16,18 +16,18 @@ else:
     shutil.rmtree(dir)
     os.makedirs(dir)
 
-f = open('cfg/default.json')
+f = open('tdvp/cfg/default.json')
 data = json.load(f)
 
 alphas = np.linspace(0,1,48)
-Ms = [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64]
+Ms = [1, 2, 4, 8, 16, 24, 32]
 
 
 ctr = 0
 for alpha in alphas:
     for bonddim in Ms:
         uuid_str = uuid.uuid1()
-        data['io_dir'] = f"{dir_out}/alphas/"+str(uuid_str)
+        data['io_dir'] = f"{dir_out}/alphas_2/"+str(uuid_str)
         data['alpha'] = alpha
         data['M'] = bonddim
 

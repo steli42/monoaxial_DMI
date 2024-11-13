@@ -22,7 +22,7 @@ fs = 1000  # 13 X 13
 # fs = 1800  # 21 X 21
 in_dir = '.'
 
-use_vlad_colorcode = False
+use_vlad_colorcode = True
 
 mkr = 's'
 my_dpi = 300

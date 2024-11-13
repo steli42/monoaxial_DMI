@@ -29,20 +29,22 @@ for (idfn, fn) in enumerate(fns):
     p = json.load(open(fn_repl))
     data['alpha'] = p['alpha']
     data['M'] = p['M']
+
+    if(p['M']==40): print(fn)
     data_all.append(data)
 data_all = pd.concat(data_all)
 data_all.to_csv('all_energies.csv')
 # exit()
 
-Ms = np.unique(data_all['M'])
+Ms = np.unique(data_all['M'])[-1:]
+print(Ms)
 for bonddim in Ms:
     data_sel = data_all[data_all['M'] == bonddim]
-    ax.scatter(data_sel['alpha'], data_sel['E_sk'])
-    ax.scatter(data_sel['alpha'], data_sel['E_ask'])
+    ax.scatter(data_sel['alpha'], abs(data_sel['<sk|ask>_re']+1j*data_sel['<sk|ask>_im']))
 
 # ax.set_xlabel('$\\braket{\\hat H - E}^2$')
 # ax.set_ylabel('$(E-E_\\infty)/|J|$')
 # ax.set_xscale('log')
-# ax.set_yscale('log')
+ax.set_yscale('log')
 plt.tight_layout()
 plt.savefig('energy_convergence.pdf')
