@@ -1,7 +1,7 @@
-import ITensors.ITensorMPS.AbstractMPS
-import ITensors.ITensorMPS.check_hascommoninds
-import ITensors.orthocenter
-import ITensors.ITensorMPS.eigsolve
+import ITensorMPS.AbstractMPS
+import ITensorMPS.check_hascommoninds
+# import ITensors.orthocenter
+import ITensorMPS.eigsolve
 include("projmpo1.jl")
 """
     dmrg1(H::MPO,psi0::MPS;kwargs...)

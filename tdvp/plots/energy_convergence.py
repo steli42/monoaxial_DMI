@@ -8,8 +8,10 @@ import matplotlib.pyplot as plt
 
 import matplotlib as mpl
 
-plt.rc('text', usetex=True)
-plt.rc('text.latex',preamble='\\usepackage{bm,braket}')
+import json
+
+# plt.rc('text', usetex=True)
+# plt.rc('text.latex',preamble='\\usepackage{bm,braket}')
 
 mpl.rcParams['figure.figsize'] = (4, 4)
 
@@ -20,14 +22,27 @@ fns = np.sort(ff.find_files(f'*{str}.csv', in_dir))
 
 fig, ax = plt.subplots(1,1)
 
+data_all = []
 for (idfn, fn) in enumerate(fns):
     data = pd.read_csv(fn)
-    print(data["E_sk"])
-    ax.scatter(data["sigma_sk"].iloc[0], data["E_sk"].iloc[0]+123.1526, color='black', marker='x')
+    fn_repl = fn.replace('energy.csv', 'params.json')
+    p = json.load(open(fn_repl))
+    data['alpha'] = p['alpha']
+    data['M'] = p['M']
+    data_all.append(data)
+data_all = pd.concat(data_all)
+data_all.to_csv('all_energies.csv')
+# exit()
 
-ax.set_xlabel('$\\braket{\\hat H - E}^2$')
-ax.set_ylabel('$(E-E_\\infty)/|J|$')
-ax.set_xscale('log')
-ax.set_yscale('log')
+Ms = np.unique(data_all['M'])
+for bonddim in Ms:
+    data_sel = data_all[data_all['M'] == bonddim]
+    ax.scatter(data_sel['alpha'], data_sel['E_sk'])
+    ax.scatter(data_sel['alpha'], data_sel['E_ask'])
+
+# ax.set_xlabel('$\\braket{\\hat H - E}^2$')
+# ax.set_ylabel('$(E-E_\\infty)/|J|$')
+# ax.set_xscale('log')
+# ax.set_yscale('log')
 plt.tight_layout()
 plt.savefig('energy_convergence.pdf')

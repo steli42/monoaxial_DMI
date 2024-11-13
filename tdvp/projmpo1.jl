@@ -1,4 +1,4 @@
-import ITensors.ITensorMPS.AbstractProjMPO
+import ITensorMPS.AbstractProjMPO
 import ITensors.@debug_check
 import ITensors.@timeit_debug
 import ITensors.@printf

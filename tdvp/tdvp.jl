@@ -1,6 +1,6 @@
 using ITensors, HDF5, DataFrames, CSV
-using ITensorMPS: MPO, OpSum, dmrg, inner, siteinds, tdvp
-import ITensors.ITensorMPS.promote_itensor_eltype, ITensors.ITensorMPS._op_prod
+using ITensorMPS
+import ITensorMPS.promote_itensor_eltype, ITensorMPS._op_prod
 using Observers: observer
 include("lattice_constructors.jl")
 include("generate_mpo.jl")
