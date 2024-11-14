@@ -1,12 +1,11 @@
-using ITensors, HDF5, DataFrames, CSV
-using ITensorMPS
-import ITensorMPS.promote_itensor_eltype, ITensorMPS._op_prod
+using ITensors, ITensorMPS, HDF5, DataFrames, CSV
 using Observers: observer
 include("lattice_constructors.jl")
 include("generate_mpo.jl")
 include("projmpo1.jl")
 include("dmrg1.jl")
 include("spinN.jl")
+include("my_dmrg_x.jl")
 
 # from spherical to cartesian coordinates
 function s2c(r, t, p)
@@ -258,8 +257,10 @@ function time_evolve()
     @show maxlinkdim(H)
     @show eltype.(psi)==eltype.(H)
     energy, psi = dmrg(H, psi, nsweeps=p["2sweeps"], observer=obs, outputlevel=p["outputlevel"], maxdim=p["M"])
-    energy, psi = dmrg1(H, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
+    # energy, psi = dmrg1(H, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
     # @show inner(psi', H, psi)
+
+    energy, psi = my_dmrg_x(H, psi; nsweeps=p["sweeps"], maxdim=p["M"], cutoff=p["cutoff_tol"], normalize=true, outputlevel=1)
     @show eltype(psi[1]).==eltype(H[1])
 
     f = h5open("$(p["io_dir"])/$(p["hdf5_final"])", "w")
