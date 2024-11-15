@@ -4,8 +4,8 @@ import ITensorMPS.check_hascommoninds
 import ITensorMPS.eigsolve
 include("projmpo1.jl")
 """
-    dmrg1(H::MPO,psi0::MPS;kwargs...)
-    dmrg1(H::MPO,psi0::MPS,sweeps::Sweeps;kwargs...)
+    dmrg1_x(H::MPO,psi0::MPS;kwargs...)
+    dmrg1_x(H::MPO,psi0::MPS,sweeps::Sweeps;kwargs...)
 
 Use the density matrix renormalization group (DMRG) algorithm
 to optimize a matrix product state (MPS) such that it is the
@@ -49,19 +49,19 @@ Optional keyword arguments:
   - `write_when_maxdim_exceeds::Int` - when the allowed maxdim exceeds this
      value, begin saving tensors to disk to free memory in large calculations
 """
-function dmrg1(H::MPO, psi0::MPS, sweeps::Sweeps; kwargs...)
+function dmrg1_x(H::MPO, psi0::MPS, sweeps::Sweeps; kwargs...)
     check_hascommoninds(siteinds, H, psi0)
     check_hascommoninds(siteinds, H, psi0')
     # Permute the indices to have a better memory layout
     # and minimize permutations
     # H = permute(H, (linkind, siteinds, linkind))
     PH = ProjMPO1(H)
-    return dmrg1(PH, psi0, sweeps; kwargs...)
+    return dmrg1_x(PH, psi0, sweeps; kwargs...)
 end
 
 """
-    dmrg1(Hs::Vector{MPO},psi0::MPS;kwargs...)
-    dmrg1(Hs::Vector{MPO},psi0::MPS,sweeps::Sweeps;kwargs...)
+    dmrg1_x(Hs::Vector{MPO},psi0::MPS;kwargs...)
+    dmrg1_x(Hs::Vector{MPO},psi0::MPS,sweeps::Sweeps;kwargs...)
 
 Use the density matrix renormalization group (DMRG) algorithm
 to optimize a matrix product state (MPS) such that it is the
@@ -111,19 +111,19 @@ Optional keyword arguments:
   - `write_when_maxdim_exceeds::Int` - when the allowed maxdim exceeds this
      value, begin saving tensors to disk to free memory in large calculations
 """
-function dmrg1(Hs::Vector{MPO}, psi0::MPS, sweeps::Sweeps; kwargs...)
+function dmrg1_x(Hs::Vector{MPO}, psi0::MPS, sweeps::Sweeps; kwargs...)
     for H in Hs
         check_hascommoninds(siteinds, H, psi0)
         check_hascommoninds(siteinds, H, psi0')
     end
     # Hs .= permute.(Hs, Ref((linkind, siteinds, linkind)))
     PHS = ProjMPOSum(Hs)
-    return dmrg1(PHS, psi0, sweeps; kwargs...)
+    return dmrg1_x(PHS, psi0, sweeps; kwargs...)
 end
 
 """
-    dmrg1(H::MPO,Ms::Vector{MPS},psi0::MPS;kwargs...)
-    dmrg1(H::MPO,Ms::Vector{MPS},psi0::MPS,sweeps::Sweeps;kwargs...)
+    dmrg1_x(H::MPO,Ms::Vector{MPS},psi0::MPS;kwargs...)
+    dmrg1_x(H::MPO,Ms::Vector{MPS},psi0::MPS,sweeps::Sweeps;kwargs...)
 
 Use the density matrix renormalization group (DMRG) algorithm
 to optimize a matrix product state (MPS) such that it is the
@@ -176,7 +176,7 @@ Optional keyword arguments:
   - `write_path::String = tempdir()` - path to use to save files to disk
      (to save RAM) when maxdim exceeds the `write_when_maxdim_exceeds` option, if set
 """
-function dmrg1(H::MPO, Ms::Vector{MPS}, psi0::MPS, sweeps::Sweeps; kwargs...)
+function dmrg1_x(H::MPO, Ms::Vector{MPS}, psi0::MPS, sweeps::Sweeps; kwargs...)
     check_hascommoninds(siteinds, H, psi0)
     check_hascommoninds(siteinds, H, psi0')
     for M in Ms
@@ -191,10 +191,10 @@ function dmrg1(H::MPO, Ms::Vector{MPS}, psi0::MPS, sweeps::Sweeps; kwargs...)
         )
     end
     PMM = ProjMPO_MPS(H, Ms; weight=weight)
-    return dmrg1(PMM, psi0, sweeps; kwargs...)
+    return dmrg1_x(PMM, psi0, sweeps; kwargs...)
 end
 
-function dmrg1(PH, psi0::MPS, sweeps::Sweeps; kwargs...)
+function dmrg1_x(PH, psi0::MPS, sweeps::Sweeps; kwargs...)
     if length(psi0) == 1
         error(
             "`dmrg` currently does not support system sizes of 1. You can diagonalize the MPO tensor directly with tools like `LinearAlgebra.eigen`, `KrylovKit.eigsolve`, etc.",
@@ -307,21 +307,30 @@ function dmrg1(PH, psi0::MPS, sweeps::Sweeps; kwargs...)
                 #     @show lproj(PH) * psi[b+1] * PH.H[b+1] * conj(psi[b+1]') * rproj(PH)
                 # end
 
-                @timeit_debug timer "dmrg: eigsolve" begin
-                    vals, vecs = eigsolve(
-                        PH,
-                        phi,
-                        1,
-                        eigsolve_which_eigenvalue;
-                        # ishermitian=ishermitian,
-                        tol=eigsolve_tol,
-                        krylovdim=eigsolve_krylovdim,
-                        maxiter=eigsolve_maxiter
-                    )
-                end
+                # @timeit_debug timer "dmrg: eigsolve" begin
+                #     vals, vecs = eigsolve(
+                #         PH,
+                #         phi,
+                #         1,
+                #         eigsolve_which_eigenvalue;
+                #         # ishermitian=ishermitian,
+                #         tol=eigsolve_tol,
+                #         krylovdim=eigsolve_krylovdim,
+                #         maxiter=eigsolve_maxiter
+                #     )
+                # end
 
-                energy = vals[1]
-                phi::ITensor = vecs[1]
+                contracted_operator = contract(PH, ITensor(true))
+                vals, vecs = eigen(contracted_operator; ishermitian=true)
+
+                u_ind = uniqueind(vecs, contracted_operator)
+                u′_ind = uniqueind(vals, vecs)
+                max_overlap, max_index = findmax(abs, array(phi * dag(vecs)))
+                vecs_max = vecs * dag(onehot(eltype(vecs), u_ind => max_index))
+                vals_max = vals[u′_ind=>max_index, u_ind=>max_index]
+
+                energy = vals_max
+                phi::ITensor = vecs_max
 
                 ortho = ha == 1 ? "left" : "right"
 
@@ -418,10 +427,10 @@ function _dmrg_sweeps(;
     return sweeps
 end
 
-function dmrg1(x1, x2, psi0::MPS; kwargs...)
-    return dmrg1(x1, x2, psi0, _dmrg_sweeps(; kwargs...); kwargs...)
+function dmrg1_x(x1, x2, psi0::MPS; kwargs...)
+    return dmrg1_x(x1, x2, psi0, _dmrg_sweeps(; kwargs...); kwargs...)
 end
 
-function dmrg1(x1, psi0::MPS; kwargs...)
-    return dmrg1(x1, psi0, _dmrg_sweeps(; kwargs...); kwargs...)
+function dmrg1_x(x1, psi0::MPS; kwargs...)
+    return dmrg1_x(x1, psi0, _dmrg_sweeps(; kwargs...); kwargs...)
 end

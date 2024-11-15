@@ -4,8 +4,9 @@ include("lattice_constructors.jl")
 include("generate_mpo.jl")
 include("projmpo1.jl")
 include("dmrg1.jl")
+include("dmrg1_x.jl")
 include("spinN.jl")
-include("my_dmrg_x.jl")
+include("my_dmrg_x2.jl")
 
 # from spherical to cartesian coordinates
 function s2c(r, t, p)
@@ -186,13 +187,14 @@ function time_evolve()
         @info "From MPS..."
         f = h5open("$(p["hdf5_initial"])", "r")
         psi0 = read(f, "psi", MPS)
+        # psi0 += 1e-8*normalize(randomMPS(siteinds(psi0), linkdims=p["M"])*1im)
         close(f)
     else
         println("No initialization chosen... quitting...")
         return
     end
     @info "Initialization done... measure"
-    normalize!(psi0)
+    # normalize!(psi0)
 
     sites = siteinds(psi0)
     vac = MPS(sites, ["Up" for s in sites])
@@ -248,6 +250,7 @@ function time_evolve()
     sweeps = Sweeps(p["sweeps"])  # initialize sweeps object
     maxdim!(sweeps, p["M"])  # fix maximum link dimension to one
     cutoff!(sweeps, p["cutoff_tol"])  # set maximum link dimension
+    noise!(sweeps, 0.0)  # set maximum link dimension
     obs = DMRGObserver(; energy_tol=p["energy_tol"])
 
     psi = copy(psi0)
@@ -256,11 +259,15 @@ function time_evolve()
 
     @show maxlinkdim(H)
     @show eltype.(psi)==eltype.(H)
-    energy, psi = dmrg(H, psi, nsweeps=p["2sweeps"], observer=obs, outputlevel=p["outputlevel"], maxdim=p["M"])
+    # energy, psi = dmrg(H, psi, nsweeps=p["2sweeps"], observer=obs, outputlevel=p["outputlevel"], maxdim=p["M"])
     # energy, psi = dmrg1(H, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
     # @show inner(psi', H, psi)
+    # @show inner(vac', MPO_up, vac)
 
-    energy, psi = my_dmrg_x(H, psi; nsweeps=p["sweeps"], maxdim=p["M"], cutoff=p["cutoff_tol"], normalize=true, outputlevel=1)
+    # MPO_up = allup_MPO(sites)
+    energy, psi = my_dmrg_x(H, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
+    normalize!(psi)
+    # energy, psi = dmrg1_x(H, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
     @show eltype(psi[1]).==eltype(H[1])
 
     f = h5open("$(p["io_dir"])/$(p["hdf5_final"])", "w")
@@ -377,4 +384,4 @@ function time_evolve()
     return
     return p, lattice, aux_lattices, onsite_idxs, nn_idxs, nn_pbc_idxs, energy
 end
-@time time_evolve()
+# @time time_evolve()

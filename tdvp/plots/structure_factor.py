@@ -2,11 +2,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-fn = "tdvp/skM32/corr.csv"
+fn = "sk/corr.csv"
 df = pd.read_csv(fn)
 data = df
 
-ks = np.linspace(-2, 2, 20)
+ks = np.linspace(-2, 2, 50)
 qhats = np.asarray([[kx, ky, 0]/np.linalg.norm([kx, ky, 0]) for kx in ks for ky in ks])
 Sab = {}
 j=0

@@ -307,6 +307,15 @@ function annihilate_uniform(sites)
     return MPO(ampo,sites)
 end
 
+function allup_MPO(sites)
+    # automated MPO generation by a sum of operator expressions
+    ampo = OpSum()
+    vec = [["S+", i, "S-", i] for i in eachindex(sites)]
+    tuple = Tuple(v for v in vcat(vec...))
+    ampo += 1, tuple...
+    return MPO(ampo,sites)
+end
+
 function rotateMPS(psi, θϕ)
     psi_new = copy(psi)
     for n in eachindex(psi)
