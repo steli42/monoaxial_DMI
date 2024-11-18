@@ -187,7 +187,7 @@ function time_evolve()
         @info "From MPS..."
         f = h5open("$(p["hdf5_initial"])", "r")
         psi0 = read(f, "psi", MPS)
-        # psi0 += 1e-8*normalize(randomMPS(siteinds(psi0), linkdims=p["M"])*1im)
+        psi0 += 1e-1*normalize(randomMPS(siteinds(psi0), linkdims=p["M"])*1im)
         close(f)
     else
         println("No initialization chosen... quitting...")
@@ -265,9 +265,9 @@ function time_evolve()
     # @show inner(vac', MPO_up, vac)
 
     # MPO_up = allup_MPO(sites)
-    energy, psi = my_dmrg_x(H, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
+    energy, psi = my_dmrg_x(H, psi, nsweeps=p["2sweeps"], maxdim=p["M"], observer=obs, outputlevel=p["outputlevel"])
     normalize!(psi)
-    # energy, psi = dmrg1_x(H, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
+    energy, psi = dmrg1_x(H, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
     @show eltype(psi[1]).==eltype(H[1])
 
     f = h5open("$(p["io_dir"])/$(p["hdf5_final"])", "w")
@@ -343,7 +343,7 @@ function time_evolve()
     T = p["tmax"]
     psiT = tdvp(
         H,
-        T * im,
+        -T * im,
         psi;
         nsteps=p["tdvp_sweeps"],
         maxdim=p["M"],

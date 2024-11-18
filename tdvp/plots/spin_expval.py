@@ -20,7 +20,7 @@ fs = 1000  # 13 X 13
 # fs = 1500  # 15 X 15
 # fs = 1650  # 19 X 19
 fs = 1800  # 21 X 21
-in_dir = 'sk'
+in_dir = 'sk2'
 
 use_vlad_colorcode = True
 
