@@ -336,8 +336,12 @@ function time_evolve()
         spins = reduce(vcat, transpose.(lobs))
         return spins
     end
+    function measure_energy(; state)
+        energy = inner(state, H, state)
+        return energy
+    end
     obs = observer(
-        "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin
+        "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin, "energy" => energy
     )
 
     T = p["tmax"]
