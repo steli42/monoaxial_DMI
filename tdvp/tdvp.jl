@@ -343,10 +343,10 @@ function time_evolve()
     T = p["tmax"]
     psiT = tdvp(
         H,
-        -T * im,
+        T * im,
         psi;
         nsteps=p["tdvp_sweeps"],
-        maxdim=p["M"],
+        maxdim=p["Mtdvp"],
         cutoff=p["cutoff_tol"],
         normalize=true,
         outputlevel=1,
@@ -384,4 +384,4 @@ function time_evolve()
     return
     return p, lattice, aux_lattices, onsite_idxs, nn_idxs, nn_pbc_idxs, energy
 end
-# @time time_evolve()
+@time time_evolve()
