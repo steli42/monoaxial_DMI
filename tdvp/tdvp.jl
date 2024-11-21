@@ -337,11 +337,11 @@ function time_evolve()
         return spins
     end
     function measure_energy(; state)
-        energy = inner(state, H, state)
+        energy = inner(state', H, state)
         return energy
     end
     obs = observer(
-        "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin, "energy" => energy
+        "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin, "energy" => measure_energy
     )
 
     T = p["tmax"]
@@ -362,6 +362,12 @@ function time_evolve()
 
     df = lobs_arr_to_df(lattice, aux_lattices, obs.spin, 𝐦, p; T=T, lbl="t")
     CSV.write("$(p["io_dir"])/series_$(p["csv_mps"])", df)
+
+    df = DataFrame()
+    dt = T/p["tdvp_sweeps"]
+    df[!, "t"] = Array(dt:dt:T)
+    df[!, "energy"] = obs.energy
+    CSV.write("$(p["io_dir"])/series_energy.csv", df)
 
     if p["save_psi(t)"]
         f = h5open("$(p["io_dir"])/time_evolved_$(p["hdf5_final"])", "w")
