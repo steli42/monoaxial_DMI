@@ -1,7 +1,8 @@
-using LinearAlgebra, Optim
+using LinearAlgebra, Optim, ITensors, ITensorMPS, HDF5
+include("spinN.jl")
 
 let
-    fn = "/Users/andreas/gits/monoaxial_DMI/tdvp/skM32/state.h5"
+    fn = "/Users/andreas/gits/monoaxial_DMI/tdvp/sk16/state.h5"
 
     f = h5open(fn, "r")
     psi = read(f, "psi", MPS)
@@ -12,12 +13,12 @@ let
     psi2 = conj.(psi2)
     normalize!(psi2)
 
-    @show norm(imag.(psi[11])), norm(imag.(psi2[11]))
+    # @show norm(imag.(psi[11])), norm(imag.(psi2[11]))
 
     @show inner(psi, psi2)
 
     for i=1:1
-        # continue
+        continue
         N = zeros(ComplexF64, (2,2))
 
         for (i1, s1) in enumerate([psi, psi2]), (i2, s2) in enumerate([psi, psi2])
@@ -39,14 +40,14 @@ let
         @show inner(psi, psi2)
     end
 
-    @show norm(imag.(psi[11])), norm(imag.(psi2[11]))
+    # @show norm(imag.(psi[11])), norm(imag.(psi2[11]))
 
     sites = siteinds(psi)
 
     # onsite terms
     ampo = OpSum()
     for id in eachindex(sites)
-        for (b, s) in zip([0,0,0,1], ["Id","Sx","Sy","Sz"])
+        for (b, s) in zip([0,0,0,-1], ["Id","Sx","Sy","Sz"])
             ampo += b, s, id
         end
     end
@@ -59,12 +60,15 @@ let
     end
 
     F = eigen(N)
+    @show N
 
-    # @show F.values
-    # vec1 = F.vectors[1,:] ./ exp(1im*angle(F.vectors[1,1]))
-    # vec2 = F.vectors[2,:] ./ exp(1im*angle(F.vectors[2,1]))
-    # @show vec1, vec2
-    # @show F.values[2]-F.values[1]
+    @show F.values
+    vec1 = F.vectors[1,:] ./ exp(1im*angle(F.vectors[1,1]))
+    vec2 = F.vectors[2,:] ./ exp(1im*angle(F.vectors[2,1]))
+    @show vec1, vec2
+    @show (F.values[2]-F.values[1])/2
+
+    return
 
     orthogonalize!(psi, length(psi)÷2)
     orthogonalize!(psi2, length(psi2)÷2)

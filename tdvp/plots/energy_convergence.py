@@ -15,7 +15,7 @@ import json
 
 mpl.rcParams['figure.figsize'] = (4, 4)
 
-in_dir = '.'
+in_dir = 'alphas'
 
 str = "/energy"
 fns = np.sort(ff.find_files(f'*{str}.csv', in_dir))
@@ -30,7 +30,7 @@ for (idfn, fn) in enumerate(fns):
     data['alpha'] = p['alpha']
     data['M'] = p['M']
 
-    if(p['M']==40): print(fn)
+    # if(p['M']==40): print(fn)
     data_all.append(data)
 data_all = pd.concat(data_all)
 data_all.to_csv('all_energies.csv')

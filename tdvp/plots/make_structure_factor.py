@@ -1,0 +1,89 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+fn = "sk16/corr.csv"
+df = pd.read_csv(fn)
+data = df
+
+ks = np.linspace(-1, 1, 50)
+qhats = np.asarray([[kx, ky, 0]/np.linalg.norm([kx, ky, 0]) for kx in ks for ky in ks])
+Sab = {}
+Sabconn = {}
+j=0
+
+kxs = np.array([kx for kx in ks for ky in ks])
+kys = np.array([ky for kx in ks for ky in ks])
+
+
+obs = ["Sx", "Sy", "Sz"]
+x, y = np.meshgrid(ks, ks)
+dfq = pd.DataFrame()
+dfq["q_x"] = kxs
+dfq["q_y"] = kys
+for o1 in obs:
+    for o2 in obs:
+        print(o1, o2)
+        data[f'{o1}*{o2}'] = (data[f'{o1}*{o2}_re'] + 1j*data[f'{o1}*{o2}_im'])
+        data[f'{o1}*{o2}_conn'] = data[f'{o1}*{o2}'] - data[f'{o1}*Id_re']*data[f'Id*{o2}_re']
+        Sconn = np.array([sum(data[f'{o1}*{o2}_conn']*np.exp(1j*kx*(data["x'"]-data["x"]))*np.exp(1j*ky*(data["y'"]-data["y"]))) for kx in ks for ky in ks])
+        Sabconn[o1,o2] = Sconn
+        S = np.array([sum(data[f'{o1}*{o2}']*np.exp(1j*kx*(data["x'"]-data["x"]))*np.exp(1j*ky*(data["y'"]-data["y"]))) for kx in ks for ky in ks])
+        Sab[o1,o2] = S
+
+for (lbl,p) in zip(['im','re'],[np.imag, np.real]):
+    fig, axs = plt.subplots(ncols=len(obs),nrows=len(obs),sharex=True,sharey=True)
+    axs = axs.ravel()
+    i=0
+    smin = 0
+    smax = 0
+    im = []
+    for o1 in obs:
+        for o2 in obs:
+            # if lbl == 'im':
+            #     continue
+            dfq[f"{lbl}({o1} {o2})"] = p(Sab[o1,o2])
+            dfq[f"{lbl}({o1} {o2})_c"] = p(Sabconn[o1,o2])
+            smin = min(smin, min(p(Sab[o1,o2])))
+            smax = max(smax, max(p(Sab[o1,o2])))
+            print(o1,o2,lbl,min(p(Sab[o1,o2])),max(p(Sab[o1,o2])), sep='\t')
+            
+            im.append(axs[i].imshow(np.reshape(p(Sabconn[o1,o2]), (len(ks), len(ks))).T, cmap='RdBu_r', interpolation='quadric', origin='lower', extent=[-1,1,-1,1]))
+            axs[i].text(0.08, 0.9, "$S_{"+f"{o1}{o2}".replace("S","")+"}$", transform=axs[i].transAxes, fontsize=6)
+            axs[i].set_xticks([])
+            axs[i].set_yticks([])
+            i+=1
+    imgs = [ax.get_images() for ax in axs]
+    # print(smin, smax)
+    # print([i[0].get_clim() for i in imgs])
+    [i[0].set_clim([smin, smax]) for i in imgs]
+    # cbar = fig.colorbar(im[len(im)-1], extend='both', location='bottom', ax=axs.tolist(), pad=0.02, shrink=0.825)
+    # plt.tight_layout()
+    fig.subplots_adjust(left=None, bottom=None, right=1.0, top=1.0, wspace=-0.36, hspace=0.0)
+
+    fn_repl = fn.replace('.csv',f'_{lbl}.jpg')
+    plt.savefig(fn_repl, bbox_inches='tight', dpi=600, pad_inches=0)
+    # plt.show()
+    plt.close()
+fn_repl = fn.replace('corr',f'sfac')
+dfq.to_csv(fn_repl)
+
+# perhaps useful -- scattering cross section
+fig, ax = plt.subplots()
+
+dsdO = 0*Sabconn[obs[0],obs[0]]
+for (a,o1) in enumerate(obs[:2]):
+    for (b,o2) in enumerate(obs[:2]):
+        dab = 0.0
+        if o1==o2: dab=1.0
+        dsdO += [(dab - qhat[a]*qhat[b])*Sabconn[o1,o2][idx] for (idx, qhat) in enumerate(qhats)]
+im = ax.imshow(np.reshape(np.real(dsdO), (len(ks), len(ks))).T, cmap='RdBu_r', interpolation='quadric', origin='lower', extent=[-1,1,-1,1])
+print(min(np.imag(dsdO)),max(np.imag(dsdO)))
+ax.set_xlabel("$q_x/\pi$")
+ax.set_ylabel("$q_y/\pi$")
+# fig.colorbar(im, ax=ax, location='bottom', extend='both', pad=0.175, aspect=40)
+fn_repl = fn.replace('.csv',f'_scs.jpg')
+# plt.tight_layout()
+plt.savefig(fn_repl, bbox_inches='tight', dpi=600, pad_inches=0)
+# plt.show()
+plt.close()
