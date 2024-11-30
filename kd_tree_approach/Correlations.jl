@@ -1,36 +1,9 @@
 using ITensors, HDF5, DelimitedFiles, Statistics
 using Base.Threads
+include("mps_aux.jl")
 
 _op_prod(o1::AbstractString, o2::AbstractString) = "$o1 * $o2"
 _op_prod(o1::Matrix{<:Number}, o2::Matrix{<:Number}) = o1 * o2
-
-function meshgrid(x_range, y_range)
-  X = repeat(x_range', length(y_range), 1)
-  Y = repeat(y_range, 1, length(x_range))
-  return X, Y
-end
-
-function build_lattice(Lx::Int64, Ly::Int64, geometry::String)
-  if geometry == "rectangular"
-    a1 = [1, 0]
-    a2 = [0, 1]
-  elseif geometry == "triangular"
-    a1 = [1, sqrt(3) / 2]
-    a2 = [0, sqrt(3) / 2]
-  end
-
-  lattice = zeros(2, Lx * Ly)
-  ctr = 1
-  for x = 0:Lx-1, y = 0:Ly-1
-    lattice[:, ctr] .= x .* a1 + y .* a2
-    ctr += 1
-  end
-  com = mean(lattice, dims=2)
-  for s = 1:ctr-1
-    lattice[:, s] .-= com
-  end
-  return lattice
-end
 
 function my_correlation_matrix(psi::MPS, _Op1, _Op2; sites=1:length(psi), site_range=nothing, ishermitian=nothing)
   if !isnothing(site_range)
@@ -192,14 +165,14 @@ function my_correlation_matrix(psi::MPS, _Op1, _Op2; sites=1:length(psi), site_r
 end
 
 function gamma_matrix(psi::MPS, S1::String, S2::String, ferromagnetic::Bool)
-  
-  # For a real polarized state, the expect() goes crazy so we need to create the extra flag.
+
+  # For a polarized state, the expect() goes crazy so we need to create the extra flag.
   # We need to handle "Sy" differently since acting with a complex MPO on a real MPS yields conversion errors (hopefully ITensors fix this one day)
   # Actually, the very same thing happens when using the correlation_matrix from ITensors 
   # so we needed to adapt our own version called my_correlation_matrix
 
-  M1 = S1 == "Sy" && ferromagnetic ? expect(complex(psi),S1) : expect(psi,S1)
-  M2 = S2 == "Sy" && ferromagnetic ? expect(complex(psi),S2) : expect(psi,S2)
+  M1 = S1 == "Sy" && ferromagnetic ? expect(complex(psi), S1) : expect(psi, S1)
+  M2 = S2 == "Sy" && ferromagnetic ? expect(complex(psi), S2) : expect(psi, S2)
 
   gamma = zeros(length(M1), length(M2))
 
@@ -220,19 +193,18 @@ function calculate_structureFactor(lattice::Array{Float64,2}, ψ::MPS, q_max, q_
   S_values_norm = zeros(length(qx_range), length(qx_range))
 
   @threads for qx_index in eachindex(qx_range)
-    q_x = qx_range[qx_index] 
+    q_x = qx_range[qx_index]
     for (qy_index, q_y) in enumerate(qy_range)
       S = 0.0
       for idxi in axes(lattice, 2), idxj in axes(lattice, 2)
-        r_i = lattice[:, idxi]
-        r_j = lattice[:, idxj]
+        r_rel = lattice[:, idxi] - lattice[:, idxj]
         q = [q_x, q_y]
-        S += corr[idxi, idxj] * exp(-im * dot(q, r_i - r_j))
+        S += corr[idxi, idxj] * exp(-1im * dot(q, r_rel))
       end
       S_values_real[qx_index, qy_index] = real(S)
       S_values_imag[qx_index, qy_index] = imag(S)
       S_values_norm[qx_index, qy_index] = abs(S)
-    end  
+    end
   end
 
   qx_mesh, qy_mesh = meshgrid(collect(qx_range), collect(qy_range))
@@ -249,19 +221,18 @@ function calculate_classical_structureFactor(lattice::Array{Float64,2}, ψ::MPS,
   s_values_norm = zeros(length(qx_range), length(qx_range))
 
   @threads for qx_index in eachindex(qx_range)
-    q_x = qx_range[qx_index] 
+    q_x = qx_range[qx_index]
     for (qy_index, q_y) in enumerate(qy_range)
       s = 0.0
       for idxi in axes(lattice, 2), idxj in axes(lattice, 2)
-        r_i = lattice[:, idxi]
-        r_j = lattice[:, idxj]
+        r_rel = lattice[:, idxi] - lattice[:, idxj]
         q = [q_x, q_y]
-        s += gamma[idxi, idxj] * exp(-im * dot(q, r_i - r_j))
+        s += gamma[idxi, idxj] * exp(-1im * dot(q, r_rel))
       end
       s_values_real[qx_index, qy_index] = real(s)
       s_values_imag[qx_index, qy_index] = imag(s)
       s_values_norm[qx_index, qy_index] = abs(s)
-    end  
+    end
   end
 
   qx_mesh, qy_mesh = meshgrid(collect(qx_range), collect(qy_range))
@@ -271,46 +242,69 @@ end
 let
 
   Lx, Ly = 15, 15
-  ϕ = 0.0
-  q_max = 2*pi/3
-  q_step = 0.025 #0.0075
-
-  elements = [("Sx", "Sx", "S_{xx}"), ("Sx", "Sy", "S_{xy}"), ("Sx", "Sz", "S_{xz}"),
-  ("Sy", "Sx", "S_{yx}"), ("Sy", "Sy", "S_{yy}"), ("Sy", "Sz", "S_{yz}"),
-  ("Sz", "Sx", "S_{zx}"), ("Sz", "Sy", "S_{zy}"), ("Sz", "Sz", "S_{zz}")]
-  elements_class = [("Sx", "Sx", "G_{xx}"), ("Sx", "Sy", "G_{xy}"), ("Sx", "Sz", "G_{xz}"),
-  ("Sy", "Sx", "G_{yx}"), ("Sy", "Sy", "G_{yy}"), ("Sy", "Sz", "G_{yz}"),
-  ("Sz", "Sx", "G_{zx}"), ("Sz", "Sy", "G_{zy}"), ("Sz", "Sz", "G_{zz}")]
-  
+  lattice = build_lattice(Lx, Ly, "rectangular")
+  φ = pi / 4
+  q_max = 2 * pi / 3 
+  q_step = 0.01 #0.0075
   # !!! CAREFUL ABOUT THE FERRO FLAG !!!  
   # ferromagnetic polarised states need to be treated with extra care: see gamma_matrix() for detail 
   ferromagnetic = false
-  
-  @time for c in [0.0, 1/sqrt(2), 1.0]
-    
-    output_dir = joinpath("kd_tree_approach","out_$(c)")
+
+  w = 1.5
+  R = 4.5
+  ecc = 1.0
+  D = -2*π/Lx  
+  αₘ = 1.0
+
+  elements = [("Sx", "Sx", "S_{xx}"), ("Sx", "Sy", "S_{xy}"), ("Sx", "Sz", "S_{xz}"),
+    ("Sy", "Sx", "S_{yx}"), ("Sy", "Sy", "S_{yy}"), ("Sy", "Sz", "S_{yz}"),
+    ("Sz", "Sx", "S_{zx}"), ("Sz", "Sy", "S_{zy}"), ("Sz", "Sz", "S_{zz}")]
+  elements_class = [("Sx", "Sx", "G_{xx}"), ("Sx", "Sy", "G_{xy}"), ("Sx", "Sz", "G_{xz}"),
+    ("Sy", "Sx", "G_{yx}"), ("Sy", "Sy", "G_{yy}"), ("Sy", "Sz", "G_{yz}"),
+    ("Sz", "Sx", "G_{zx}"), ("Sz", "Sy", "G_{zy}"), ("Sz", "Sz", "G_{zz}")]
+
+  input_dir = joinpath("kd_tree_approach", "states")
+  f = h5open(joinpath(input_dir, "Q0_0_orig.h5"), "r")
+  ψ₁ = read(f, "Psi", MPS)
+  close(f)
+  f = h5open(joinpath(input_dir, "Q0_0_conj.h5"), "r")
+  ψ₂ = read(f, "Psi_c", MPS)
+  close(f)
+
+  @time for c in [0.0] #[0.0, 1/sqrt(2), 1.0] 
+    formatted_c = replace(string(round(c, digits=3)), "." => "_")
+    output_dir = joinpath("corr_data", "out_corr", "out_$(formatted_c)")
     if !isdir(output_dir)
       mkpath(output_dir)
     end
-    data_dir = joinpath("kd_tree_approach","states")
-    
-    f = h5open(joinpath(data_dir,"Q0_0_orig.h5"),"r")
-    ψ₁ = read(f, "Psi", MPS)
-    close(f)
 
-    f = h5open(joinpath(data_dir,"Q0_0_conj.h5"),"r")
-    ψ₂ = read(f, "Psi_c", MPS)
-    close(f)
+    Ψ = c * ψ₂ + sqrt(1 - c^2) * ψ₁  # we fix the phase to be ϕ = 0
 
-    Ψ = c * exp(im * ϕ) * ψ₂ + sqrt(1 - c^2) * ψ₁
-    lattice = build_lattice(Lx, Ly, "rectangular")
+    Ψ, _ = construct_PS("spiral", lattice, D, αₘ, w, R, ecc)
+    # psi_new = copy(Ψ)    # This block applies sigma_y to each site; thus flipping the sign of x and z projections ---- this is time reversal
+    # for n in eachindex(Ψ)
+    #   sym = 2 * op("Sy", siteinds(Ψ), n)    # factor 2 changes S to sigma
+    #   psi_new[n] = sym * Ψ[n]
+    # end
+    # Ψ = noprime(psi_new)
+
+    # This block of code rotates each spin by angle φ and the lattice correspondingly
+    θφ = zeros(2, length(siteinds(Ψ)))
+    for id in axes(θφ, 2)
+      θφ[2, id] = φ
+    end
+    Ψ = rotate_MPS(Ψ, θφ)
+    # normalize!(Ψ)
+    for id in axes(lattice, 2)
+      lattice[:, id] = ez_rotation(lattice[:, id], -φ)
+    end
 
     if ferromagnetic == true
       sites = siteinds(Ψ)
-      Ψ = MPS(sites,["Up" for s in sites])
+      Ψ = MPS(sites, ["Up" for s in sites])
       Ψ = normalize(Ψ)
-    end  
-    
+    end
+
     for (op1, op2, plot_title) in elements
       println("Calculating structure factor $plot_title ...")
       qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm = calculate_structureFactor(lattice, Ψ, q_max, q_step, op1, op2)
@@ -339,4 +333,30 @@ let
 
   end
 
+  return
 end
+
+
+
+
+  #########################################################################################################################
+  # sx_expval = expect(ψ, "Sx")
+  # sy_expval = expect(ψ, "Sy")
+  # sz_expval = expect(ψ, "Sz")
+
+  # fig = plt.figure()
+  # ax = fig.add_subplot(projection = "3d")
+      
+  # for idx in axes(lattice,2)
+  #     t = sz_expval
+  #     x, y, z = lattice[1,idx],lattice[2,idx], 0.0
+  #     vmin = minimum(t)
+  #     vmax = maximum(t)
+  #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
+  #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
+  #     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
+  #     plt.xlabel("x")
+  #     plt.ylabel("y")
+  # end
+  # ax.set_aspect("equal")
+  # plt.show()
