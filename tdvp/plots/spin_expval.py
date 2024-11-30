@@ -14,14 +14,13 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 plt.rc('text', usetex=True)
 plt.rc('text.latex',preamble='\\usepackage{bm}')
-fs = 1000
-fs = 920  # 11 X 11
-# fs = 1070  # 13 X 13
-fs = 1230  # 15 X 15
-# fs = 1690  # 21 x 21
-# fs = 2450  # 31 x 31
-# fs = 2000
-in_dir = 'sk'
+
+fs = 850  # 9 X 9
+fs = 1000  # 13 X 13
+# fs = 1500  # 15 X 15
+# fs = 1650  # 19 X 19
+fs = 1800  # 21 X 21
+in_dir = 'tdvp/sk2'
 
 use_vlad_colorcode = True
 
@@ -90,11 +89,14 @@ for (idfn, fn) in enumerate(fns):
     if use_vlad_colorcode:
         # imag = ax.scatter(x, y, cmap='RdBu_r', c=Sz, marker=mkr, s=90, vmin=-vabs, vmax=vabs)
         for (xi,yi,sx,sy,sz,ds) in zip(x,y,Sx,Sy,Sz,normdev):
-            sn = (sx**2+sy**2+sz**2)**0.5
+            sn = (sx**2+sy**2+sz**2)**0.5 + 1e-16
             color = hsv2rgb([sx/sn,sy/sn,sz/sn],0,0)
-            ax.scatter(xi, yi, c=ds/2, cmap='Greys', marker='s', s=90, vmin=0, vmax=vabs, edgecolor='None')
+            ax.scatter(xi, yi, c=ds/2, cmap='Greys', marker='h', s=90, vmin=0, vmax=vabs, edgecolor='None')
             imag = ax.scatter(xi, yi, facecolor=color, edgecolor='None', marker='o', s=90*0.1)
             ax.quiver(xi, yi, sx, sy, units='xy', width=0.08, scale=vabs*1, pivot='middle', color=color)
+    else:
+        imag = ax.scatter(x, y, cmap='RdBu_r', c=Sz, marker=mkr, s=90, vmin=-vabs, vmax=vabs, edgecolors='none')
+        ax.quiver(x, y, Sx, Sy, units='xy', width=0.08, scale=vabs*1, pivot='middle', color='white')
 
     mmy = np.asarray([np.min(y),np.max(y)])
     mmx = np.asarray([np.min(x),np.max(x)])
@@ -118,6 +120,7 @@ for (idfn, fn) in enumerate(fns):
     # cbar = fig.colorbar(imag, cax=axins, orientation = 'vertical')
     # cbar.ax.set_title('$\\langle{\\hat S_{i,z}}\\rangle$')
     # ax.plot([-10,10], [0,0], color='black')
+    plt.tight_layout()
     plt.savefig(f'{out_dir}/mag{ffmt}', pad_inches=0, bbox_inches='tight', dpi=my_dpi)
 
     fig, ax = plt.subplots()

@@ -5,16 +5,33 @@ function pairwise_interaction(p, Sv, id1, id2, dir)
     # @show id1, id2
     # Heisenberg interaction
     for s in Sv
-        ampo += 0.5*p["J"], s, id1, s, id2
+        if s == "Syre"
+            ampo -= 0.5*p["J"], s, id1, s, id2
+        else
+            ampo += 0.5*p["J"], s, id1, s, id2
+        end
     end
     # uniaxial anisotropy
     ampo += 0.5*p["K"] , "Sz", id1, "Sz", id2
     # DMI interaction
     # D = 0.5*p["D"]×dir  # standard interfacial DMI
     D = 0.5*p["D"][3]*dir  # standard interfacial DMI
+    # decompose DMI to e1, e2
+    # phi = π/4
+    # a1 = [ cos(phi), sin(phi), 0.0]
+    # a2 = [-sin(phi), cos(phi), 0.0]
+
+    # Da1 = dot(D,a1)
+    # Da2 = dot(D,a2)
+
+    # D = p["alpha"]*Da1*a1 + Da2*a2
+    
     D[p["alpha_ax"]] *= p["alpha"]
     # D = 0.5*p["D"]×dir[1]  # monoaxial interfacial DMI
     for i in eachindex(Sv),  j in eachindex(Sv),  k in eachindex(Sv)
+        if norm(D[i]) < 1e-6 || abs(epsilon(i,j,k)) < 1e-6
+            continue
+        end
         ampo += D[i]*epsilon(i,j,k), Sv[j], id1, Sv[k], id2
     end
     return ampo
@@ -26,7 +43,14 @@ function pairwise_interaction_QC(p, Sv, id, 𝐦i, dir)
     # @show id1, id2
     # Heisenberg interaction
     for (s, mis) in zip(Sv, 𝐦i)
-        ampo += 0.5*p["J"]*mis, s, id
+        if mis < 1e-6
+            continue
+        end
+        if s == "Syre"
+            ampo -= 0.5*p["J"]*mis, s, id1, s, id2
+        else
+            ampo += 0.5*p["J"]*mis, s, id
+        end
     end
     # uniaxial anisotropy
     ampo += 0.5*p["K"]*𝐦i[3] , "Sz", id
@@ -35,6 +59,9 @@ function pairwise_interaction_QC(p, Sv, id, 𝐦i, dir)
     D = 0.5*p["D"][3]*dir  # standard interfacial DMI
     D[p["alpha_ax"]] *= p["alpha"]
     for i in eachindex(Sv),  j in eachindex(Sv),  k in eachindex(Sv)
+        if norm(D[i]) < 1e-6 || abs(epsilon(i,j,k)) < 1e-6 || abs(𝐦i[k]) < 1e-6
+            continue
+        end
         ampo += D[i]*epsilon(i,j,k)*𝐦i[k], Sv[j], id
     end
     return ampo
@@ -189,7 +216,11 @@ function generate_full_MPO(sites, 𝐦, p, lat_mat, latcs_aux, nn_idxs, nn_pbc_i
         end
     end
 
-    return MPO(ampo,sites)
+    if "Syre" in Sv
+        return MPO(Float64, ampo, sites)
+    else
+        return MPO(ampo, sites)
+    end
 end
 
 function generate_zeeman_MPO(sites, p, lat_mat, latcs_aux, nn_idxs, nn_pbc_idxs)
@@ -273,6 +304,15 @@ function annihilate_uniform(sites)
     for n in eachindex(sites)
         ampo .+= 1.0, "S-", n
     end
+    return MPO(ampo,sites)
+end
+
+function allup_MPO(sites)
+    # automated MPO generation by a sum of operator expressions
+    ampo = OpSum()
+    vec = [["S+", i, "S-", i] for i in eachindex(sites)]
+    tuple = Tuple(v for v in vcat(vec...))
+    ampo += 1, tuple...
     return MPO(ampo,sites)
 end
 

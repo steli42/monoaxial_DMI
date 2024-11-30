@@ -1,13 +1,144 @@
-using ITensors, ITensorMPS, HDF5
+using ITensors, HDF5, DataFrames, CSV
+using ITensorMPS: MPO, OpSum, dmrg, inner, siteinds, tdvp, dmrg_x
+import ITensors.ITensorMPS.promote_itensor_eltype, ITensors.ITensorMPS._op_prod
 using Observers: observer
 include("lattice_constructors.jl")
 include("generate_mpo.jl")
 include("projmpo1.jl")
 include("dmrg1.jl")
-include("dmrg1_x.jl")
 include("spinN.jl")
-include("my_dmrg_x2.jl")
-include("io.jl")
+include("my_dmrg_x.jl")
+
+# from spherical to cartesian coordinates
+function s2c(r, t, p)
+    return r .* [sin(t) * cos(p), sin(t) * sin(p), cos(t)]
+end
+
+# from cartesian to spherical coordinates
+function c2s(spin)
+    r = norm(spin)
+    t = acos(spin[3] / r)
+    p = sign(spin[2]) * acos(spin[1] / norm(spin[1:2]))
+    return [r, t, p]
+end
+
+function lobs_to_df(lattice, aux_lattices, spins, 𝐦, p)
+    df = DataFrame()
+    xs = lattice[1, :]
+    ys = lattice[2, :]
+    zs = lattice[3, :]
+    Sxs = real.(spins[1, :])
+    Sys = real.(spins[2, :])
+    Szs = real.(spins[3, :])
+    if p["boundary_conditions"] == "classical_environment"
+        for (idal, al) in enumerate(aux_lattices)
+            for i in axes(al, 2)
+                for (x, y, z) in zip(lattice[1, :], lattice[2, :], lattice[3, :])
+                    dist = [x, y, z] .- al[:, i]
+                    if abs(norm(dist)) < 1.2
+                        # check if the element already exists
+                        b1 = xs .== al[1, i]
+                        b2 = ys .== al[2, i]
+                        if any(b1 .* b2)
+                            continue
+                        end
+                        push!(xs, al[1, i])
+                        push!(ys, al[2, i])
+                        push!(zs, al[3, i])
+                        push!(Sxs, real.(0.5 * 𝐦[1, idal, i]))
+                        push!(Sys, real.(0.5 * 𝐦[2, idal, i]))
+                        push!(Szs, real.(0.5 * 𝐦[3, idal, i]))
+                    end
+                end
+            end
+        end
+    end
+
+    df[!, "x"] = xs
+    df[!, "y"] = ys
+    df[!, "z"] = zs
+    df[!, "S_x"] = Sxs
+    df[!, "S_y"] = Sys
+    df[!, "S_z"] = Szs
+    return df
+end
+
+function lobs_arr_to_df(lattice, aux_lattices, spins_arr, 𝐦, p; T=1.0, lbl="n")
+    df_all = DataFrame()
+    dt = T/length(spins_arr)
+    for (ids, spins) in enumerate(spins_arr)
+        df = DataFrame()
+        xs = lattice[1, :]
+        ys = lattice[2, :]
+        zs = lattice[3, :]
+        Sxs = real.(spins[1, :])
+        Sys = real.(spins[2, :])
+        Szs = real.(spins[3, :])
+        if p["boundary_conditions"] == "classical_environment"
+            for (idal, al) in enumerate(aux_lattices)
+                for i in axes(al, 2)
+                    for (x, y, z) in zip(lattice[1, :], lattice[2, :], lattice[3, :])
+                        dist = [x, y, z] .- al[:, i]
+                        if abs(norm(dist)) < 1.2
+                            # check if the element already exists
+                            b1 = xs .== al[1, i]
+                            b2 = ys .== al[2, i]
+                            if any(b1 .* b2)
+                                continue
+                            end
+                            push!(xs, al[1, i])
+                            push!(ys, al[2, i])
+                            push!(zs, al[3, i])
+                            push!(Sxs, real.(0.5 * 𝐦[1, idal, i]))
+                            push!(Sys, real.(0.5 * 𝐦[2, idal, i]))
+                            push!(Szs, real.(0.5 * 𝐦[3, idal, i]))
+                        end
+                    end
+                end
+            end
+        end
+        df[!, lbl] = ones(size(xs))*ids*dt
+        df[!, "x"] = xs
+        df[!, "y"] = ys
+        df[!, "z"] = zs
+        df[!, "S_x"] = Sxs
+        df[!, "S_y"] = Sys
+        df[!, "S_z"] = Szs
+
+        df_all = vcat(df_all, df; cols = :union)
+    end
+    # @show df_all
+    return df_all
+end
+
+function corr_to_df(lattice, corr, p)
+    df = DataFrame()
+    x1s = []
+    y1s = []
+    z1s = []
+    x2s = []
+    y2s = []
+    z2s = []
+    for i1 in axes(lattice,2), i2 in axes(lattice,2)
+        push!(x1s, lattice[1,i1])
+        push!(x2s, lattice[1,i2])
+        push!(y1s, lattice[2,i1])
+        push!(y2s, lattice[2,i2])
+        push!(z1s, lattice[3,i1])
+        push!(z2s, lattice[3,i2])
+    end
+    df[!, "x"] = x1s
+    df[!, "y"] = y1s
+    df[!, "z"] = z1s
+    df[!, "x'"] = x2s
+    df[!, "y'"] = y2s
+    df[!, "z'"] = z2s
+    for k in keys(corr)
+        df[!, "$(k[1])*$(k[2])_re"] = real.(vcat(corr[k]...))
+        df[!, "$(k[1])*$(k[2])_im"] = imag.(vcat(corr[k]...))
+    end
+    return df
+end
 
 function time_evolve()
     p, lattice, aux_lattices, onsite_idxs, nn_idxs, nn_pbc_idxs, tree = create_lattice()
@@ -57,14 +188,13 @@ function time_evolve()
         @info "From MPS..."
         f = h5open("$(p["hdf5_initial"])", "r")
         psi0 = read(f, "psi", MPS)
-        psi0 += 1e-1*normalize(randomMPS(siteinds(psi0), linkdims=p["M"])*1im)
         close(f)
     else
         println("No initialization chosen... quitting...")
         return
     end
     @info "Initialization done... measure"
-    # normalize!(psi0)
+    normalize!(psi0)
 
     sites = siteinds(psi0)
     vac = MPS(sites, ["Up" for s in sites])
@@ -120,24 +250,16 @@ function time_evolve()
     sweeps = Sweeps(p["sweeps"])  # initialize sweeps object
     maxdim!(sweeps, p["M"])  # fix maximum link dimension to one
     cutoff!(sweeps, p["cutoff_tol"])  # set maximum link dimension
-    noise!(sweeps, 0.0)  # set maximum link dimension
     obs = DMRGObserver(; energy_tol=p["energy_tol"])
 
     psi = copy(psi0)
 
-    Hgrad = generate_zeeman_gradient_MPO(sites, p, lattice)
-
     @show maxlinkdim(H)
     @show eltype.(psi)==eltype.(H)
-    # energy, psi = dmrg(H, psi, nsweeps=p["2sweeps"], observer=obs, outputlevel=p["outputlevel"], maxdim=p["M"])
+    energy, psi = dmrg(H, psi, nsweeps=p["2sweeps"], observer=obs, outputlevel=p["outputlevel"], maxdim=p["M"], cutoff=1e-16)
     # energy, psi = dmrg1(H, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
     # @show inner(psi', H, psi)
-    # @show inner(vac', MPO_up, vac)
-
-    # MPO_up = allup_MPO(sites)
-    energy, psi = my_dmrg_x(H, psi, nsweeps=p["2sweeps"], maxdim=p["M"], observer=obs, outputlevel=p["outputlevel"])
-    normalize!(psi)
-    energy, psi = dmrg1_x(H, psi, sweeps, observer=obs, outputlevel=p["outputlevel"])
+    energy, psi = my_dmrg_x(H, psi; nsweeps=p["sweeps"], maxdim=p["M"], cutoff=p["cutoff_tol"], normalize=true, outputlevel=1)
     @show eltype(psi[1]).==eltype(H[1])
 
     f = h5open("$(p["io_dir"])/$(p["hdf5_final"])", "w")
@@ -196,8 +318,6 @@ function time_evolve()
     df = corr_to_df(lattice, corrs, p)
     CSV.write("$(p["io_dir"])/$(p["csv_mps_corr"])", df)
 
-    H = H + p["Bgrad_slope"]*Hgrad
-
     step(; sweep) = sweep
     current_time(; current_time) = current_time
     return_state(; state) = state
@@ -206,43 +326,37 @@ function time_evolve()
         spins = reduce(vcat, transpose.(lobs))
         return spins
     end
-    function measure_energy(; state)
-        energy = inner(state', H, state)
-        return energy
-    end
     obs = observer(
-        "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin, "energy" => measure_energy
+        "steps" => step, "times" => current_time, "states" => return_state, "spin" => measure_spin
     )
 
-    T = p["tmax"]
-    psiT = tdvp(
-        H,
-        T * im,
-        psi;
-        nsteps=p["tdvp_sweeps"],
-        maxdim=p["Mtdvp"],
-        cutoff=p["cutoff_tol"],
-        normalize=true,
-        outputlevel=1,
-        (step_observer!)=obs,
-        order=p["tdvp_order"],
-        # updater_backend="applyexp",
-        # maxiter=10
-    )
+    if p["tdvp_sweeps"] != 0
+        Hgrad = generate_zeeman_gradient_MPO(sites, p, lattice)
+        H = H + p["Bgrad_slope"]*Hgrad
+        T = p["tmax"]
+        psiT = tdvp(
+            H,
+            T * im,
+            psi;
+            nsteps=p["tdvp_sweeps"],
+            maxdim=p["M"],
+            cutoff=p["cutoff_tol"],
+            normalize=true,
+            outputlevel=1,
+            (step_observer!)=obs,
+            order=p["tdvp_order"],
+            # updater_backend="applyexp",
+            # maxiter=10
+        )
 
-    df = lobs_arr_to_df(lattice, aux_lattices, obs.spin, 𝐦, p; T=T, lbl="t")
-    CSV.write("$(p["io_dir"])/series_$(p["csv_mps"])", df)
+        df = lobs_arr_to_df(lattice, aux_lattices, obs.spin, 𝐦, p; T=T, lbl="t")
+        CSV.write("$(p["io_dir"])/series_$(p["csv_mps"])", df)
 
-    df = DataFrame()
-    dt = T/p["tdvp_sweeps"]
-    df[!, "t"] = Array(dt:dt:T)
-    df[!, "energy"] = obs.energy
-    CSV.write("$(p["io_dir"])/series_energy.csv", df)
-
-    if p["save_psi(t)"]
-        f = h5open("$(p["io_dir"])/time_evolved_$(p["hdf5_final"])", "w")
-        [write(f, "psi$i", psi) for (i, psi) in enumerate(obs.states)]
-        close(f)
+        if p["save_psi(t)"]
+            f = h5open("$(p["io_dir"])/time_evolved_$(p["hdf5_final"])", "w")
+            [write(f, "psi$i", psi) for (i, psi) in enumerate(obs.states)]
+            close(f)
+        end
     end
 
     # println("\nResults")

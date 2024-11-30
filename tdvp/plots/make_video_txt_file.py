@@ -5,8 +5,8 @@ import uuid
 
 from auxi import find_files as ff
 
-folder = 'out/series'
-string = '*mag.png'
+folder = 'sk2'
+string = '*series/*mag.png'
 fns = ff.find_files(f'{string}', folder)
 
 fns = np.sort(fns)

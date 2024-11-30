@@ -22,7 +22,7 @@ fs = 1070  # 13 X 13
 # fs = 1690  # 21 x 21
 fs = 2450  # 31 x 31
 # fs = 3400  # 45 x 15
-in_dir = 'sk8_neg'
+in_dir = 'sk8'
 mkr = 's'
 my_dpi = 300
 ffmt = ''
@@ -60,12 +60,24 @@ for (idfn, fn) in enumerate(fns):
 
     data = pd.read_csv(fn)
 
+    fn2 = fn.replace(f'sk8', 'sk8_neg')
+    data2 = pd.read_csv(fn2)
+
     times = np.unique(data['t'])
 
     for (idt,time) in enumerate(times):
         print(idt)
         data_slice = data[data['t']==time]
-        x, y, Sx, Sy, Sz = data_slice['x'], data_slice['y'], data_slice['S_x'], data_slice['S_y'], data_slice['S_z']
+        data_slice2 = data2[data2['t']==-time]
+
+        # print(data_slice2)
+        # exit()
+
+        data_slice['S_x2'] = 0.5*np.asfarray(data_slice['S_x'] + data_slice2['S_x'])
+        data_slice['S_y2'] = 0.5*np.asfarray(data_slice['S_y'] - data_slice2['S_y'])
+        data_slice['S_z2'] = 0.5*np.asfarray(data_slice['S_z'] + data_slice2['S_z'])
+        x, y, Sx, Sy, Sz = data_slice['x'], data_slice['y'], data_slice['S_x2'], data_slice['S_y2'], data_slice['S_z2']
+
         S = (Sx**2 + Sy**2 + Sz**2)**(1/2)
         Ox, Oy, Oz = Sx/S, Sy/S, Sz/S
 
