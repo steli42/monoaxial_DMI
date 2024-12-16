@@ -419,9 +419,6 @@ let
     # Bg = -2 * 0.02 / Ly * [0.0, 0.0, 1.0] * D^2/ms 
     Bg = [0.0, 0.0, -0.02] / ms
 
-    @show B 
-    @show Bg
-
     m = m_evol[ctr]
     m_evol2, ctr = llg_solver_rk4(m, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis, Γ, τ, dt, steps, false)  
     energy = calculate_energy(m_evol2[ctr], lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis) - 
