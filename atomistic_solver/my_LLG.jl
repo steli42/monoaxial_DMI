@@ -331,9 +331,9 @@ function calculate_rs(m_evol::Any, lattice::Matrix{Float64}, time, ms)
 
     x_avg = zeros(length(time))
     y_avg = zeros(length(time))
-    x_aux(t) = sum(lattice[1,idx]*(mag[3] - ms) for (idx,mag) in enumerate(m_evol[t])) 
-    y_aux(t) = sum(lattice[2,idx]*(mag[3] - ms) for (idx,mag) in enumerate(m_evol[t])) 
-    Ns(t) = sum((mag[3] - ms) for mag in m_evol[t]) 
+    x_aux(t) = sum(lattice[1,idx]*(ms - mag[3]) for (idx,mag) in enumerate(m_evol[t])) 
+    y_aux(t) = sum(lattice[2,idx]*(ms - mag[3]) for (idx,mag) in enumerate(m_evol[t])) 
+    Ns(t) = sum((ms - mag[3]) for mag in m_evol[t]) 
     for t in time
         N = Ns(t)
         x_avg[t] = x_aux(t)/N
@@ -359,12 +359,13 @@ let
     w = 1.5 
     R = 4.5 
     ecc = 1.0
+
+    prec(x,y) = -x * ms / (1 + (y*ms)^2)        
+    damp(x,y) = -x * y * ms^2 / (1 + (y*ms)^2)
     
-    μ = -1.0  
-    β = 1.0
-    Γ = -μ*ms / (1 + (β*ms)^2)        
-    τ = -μ * β * ms^2 / (1 + (β*ms)^2) 
-    dt = 1e-1
+    Γ = prec(1.0, -1.0)
+    τ = damp(1.0, -1.0)
+    dt = 0.1
     steps = Int(1e4) #the minimum is 1e3 time steps
 
     lattice = construct_lattice(Lx,Ly)
@@ -411,15 +412,13 @@ let
     # ################################################################################################# 
     # ################################################################################################# 
 
-    β = 0.0
-    Γ = -μ*ms / (1 + (β*ms)^2)        
-    τ = -μ * β * ms^2 / (1 + (β*ms)^2) 
-    dt = 0.001
-    steps = 25*Int(1e3) 
-    # Bg = -2 * 0.02 / Ly * [0.0, 0.0, 1.0] * D^2/ms 
-    Bg = [0.0, 0.0, -0.02] / ms
+    Γ = prec(1.0, 0.0)
+    τ = damp(1.0, 0.0)
+    dt = 0.01
+    steps = Int(1e4) 
+    Bg = -2 * 0.02 / Ly * [0.0, 0.0, 1.0] /ms 
+    
 
-    m = m_evol[ctr]
     m_evol2, ctr = llg_solver_rk4(m, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis, Γ, τ, dt, steps, false)  
     energy = calculate_energy(m_evol2[ctr], lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis) - 
         calculate_energy(vacuum, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis)
@@ -440,14 +439,14 @@ let
     plot(dt*time,y_com)
     ylabel("y(t)")
 
-    # plt.figure()
-    # N = zeros(length(time))
-    # Ns(t) = sum((mag[3] - ms) for mag in m_evol2[t]) 
-    # for (idx,t) in enumerate(time)
-    #     N[idx] = Ns(t)
-    # end
-    # plot(dt*time,N)
-    # ylabel("Ns(t)")
+    plt.figure()
+    N = zeros(length(time))
+    Ns(t) = sum((ms - mag[3]) for mag in m_evol2[t])*(1/Lx*Ly)
+    for (idx,t) in enumerate(time)
+        N[idx] = Ns(t)
+    end
+    plot(dt*time,N)
+    ylabel("Ns(t)")
 
 
 
