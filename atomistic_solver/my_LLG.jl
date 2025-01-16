@@ -1,4 +1,5 @@
 using LinearAlgebra, Statistics, NearestNeighbors, StaticArrays, ProgressBars
+using HDF5, Polynomials
 using PyPlot
 pygui(true)
 
@@ -34,6 +35,7 @@ function rotate_m(m::Any, θϕ)
         Ryn = [cos(θ) 0 sin(θ); 0 1 0; -sin(θ) 0 cos(θ)]
         Rzn = [cos(ϕ) -sin(ϕ) 0; sin(ϕ) cos(ϕ) 0; 0 0 1]
         m_new[n] = Rzn * (Ryn * m[n])
+        m_new[n] = normalize(m_new[n])
     end
     return m_new
 end
@@ -73,9 +75,6 @@ function initialize_m(case::String, lattice::Matrix{Float64}, D, α, w, R, ecc)
         m = rotate_m(m, θϕ)
     end
 
-    # Lx,Ly = 15,15
-    # idx = Lx*Ly ÷ 2
-    # m[idx] = [0,0,-1]
     @info "Initialized"
     return m
 end
@@ -114,10 +113,10 @@ function calculate_energy(m::Any, lattice::Matrix{Float64}, boundary::Matrix{Flo
     end
     
     # lattice-boundary interactions
-    mb = -ms * normalize(B) 
+    mb = -normalize(B) 
     for idx in axes(boundary,2)
         for nn_idx in nn_idxs_LB[idx]
-
+            
             # exchange
             energy += J * dot(mb, m[nn_idx]) 
 
@@ -129,16 +128,17 @@ function calculate_energy(m::Any, lattice::Matrix{Float64}, boundary::Matrix{Flo
 
             # dmi
             m_cross = cross(m[nn_idx], mb) 
-            energy += dot(D_vector, m_cross)
+            energy -= dot(D_vector, m_cross)   #could it really be this minus instead of plus??? CHECK!
         end
     end
 
+    energy *= ms^2
     return energy
 end
 
 function calculate_Heff(m::Any, lattice::Matrix{Float64}, boundary::Matrix{Float64},
     nn_idxs_LL::Vector{Vector{Int64}}, nn_idxs_LB::Vector{Vector{Int64}},
-    B, Bg, J, D, ms, α, alpha_axis::Int64)
+    B, Bg, J, D, α, alpha_axis::Int64)
     Heff = [SVector{3, Float64}(0.0, 0.0, 0.0) for _ in 1:length(m)]
     # axis = alpha_axis == 1 ? 2 : 1
     
@@ -166,7 +166,8 @@ function calculate_Heff(m::Any, lattice::Matrix{Float64}, boundary::Matrix{Float
     end
 
     # H_eff from boundary sites
-    mb = -ms * normalize(B) 
+    # mb = -0.5*normalize(B)   # !!! lets come back to this
+    mb = -normalize(B)   
     for idx in axes(boundary,2)
         for nn_idx in nn_idxs_LB[idx]
 
@@ -194,7 +195,7 @@ end
 
 function llg_solver_rk4(m::Any, lattice::Matrix{Float64}, boundary::Matrix{Float64},
     nn_idxs_LL::Vector{Vector{Int64}}, nn_idxs_LB::Vector{Vector{Int64}},
-    B, Bg, J, D, ms, α, alpha_axis::Int64, 
+    B, Bg, J, D, α, alpha_axis::Int64, 
     Γ, τ, dt, steps, relax::Bool)
 
     function compute_dmdt(m::Any, H_eff::Any)
@@ -215,19 +216,19 @@ function llg_solver_rk4(m::Any, lattice::Matrix{Float64}, boundary::Matrix{Float
     ε = 1e-8
     ctr = 1
     for step in pbar
-        H_eff_1 = calculate_Heff(m, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis)
+        H_eff_1 = calculate_Heff(m, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, α, alpha_axis)
         k1 = compute_dmdt(m, H_eff_1) 
 
         m_temp = [normalize(m[idx] + 0.5 * dt * k1[idx]) for idx in eachindex(m)]
-        H_eff_2 = calculate_Heff(m_temp, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis)
+        H_eff_2 = calculate_Heff(m_temp, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, α, alpha_axis)
         k2 = compute_dmdt(m_temp, H_eff_2) 
 
         m_temp = [normalize(m[idx] + 0.5 * dt * k2[idx]) for idx in eachindex(m)]
-        H_eff_3 = calculate_Heff(m_temp, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis)
+        H_eff_3 = calculate_Heff(m_temp, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, α, alpha_axis)
         k3 = compute_dmdt(m_temp, H_eff_3)
 
         m_temp = [normalize(m[idx] + dt * k3[idx]) for idx in eachindex(m)]
-        H_eff_4 = calculate_Heff(m_temp, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis)
+        H_eff_4 = calculate_Heff(m_temp, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, α, alpha_axis)
         k4 = compute_dmdt(m_temp, H_eff_4)
         
         for idx in eachindex(m)
@@ -297,18 +298,17 @@ end
 
 function plot_avg_torque(m_evol::Any, lattice::Matrix{Float64}, boundary::Matrix{Float64},
     nn_idxs_LL::Vector{Vector{Int64}}, nn_idxs_LB::Vector{Vector{Int64}}, time, B, Bg, 
-    J, D, ms, α, alpha_axis::Int64)
+    J, D, α, alpha_axis::Int64)
 
     fig = plt.figure()
-    T_avg = [calculate_avg_torque(m_evol[t], calculate_Heff(m_evol[t], lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis)) for t in time]
+    T_avg = [calculate_avg_torque(m_evol[t], calculate_Heff(m_evol[t], lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, α, alpha_axis)) for t in time]
     plot(time, T_avg, color="black", label="T")
     xlabel("t")
     ylabel("Torque")
     legend()
     grid(true)
-    show()
     plt.savefig("atomistic_solver/torque.png",dpi=600)
-
+    plt.close(fig)
 end
 
 function plot_avg_m_projections(m_evol::Any, time)
@@ -323,17 +323,17 @@ function plot_avg_m_projections(m_evol::Any, time)
     ylabel("Average m")
     legend()
     grid(true)
-    show()
     plt.savefig("atomistic_solver/magnetisations.png",dpi=600)
+    plt.close(fig)
 end
 
-function calculate_rs(m_evol::Any, lattice::Matrix{Float64}, time, ms)
-
+function calculate_rs(m_evol::Any, lattice::Matrix{Float64}, time)
+ 
     x_avg = zeros(length(time))
     y_avg = zeros(length(time))
-    x_aux(t) = sum(lattice[1,idx]*(ms - mag[3]) for (idx,mag) in enumerate(m_evol[t])) 
-    y_aux(t) = sum(lattice[2,idx]*(ms - mag[3]) for (idx,mag) in enumerate(m_evol[t])) 
-    Ns(t) = sum((ms - mag[3]) for mag in m_evol[t]) 
+    x_aux(t) = sum(lattice[1,idx]*(mag[3] - 1) for (idx,mag) in enumerate(m_evol[t])) 
+    y_aux(t) = sum(lattice[2,idx]*(mag[3] - 1) for (idx,mag) in enumerate(m_evol[t])) 
+    Ns(t) = sum((mag[3] - 1) for mag in m_evol[t]) 
     for t in time
         N = Ns(t)
         x_avg[t] = x_aux(t)/N
@@ -342,18 +342,75 @@ function calculate_rs(m_evol::Any, lattice::Matrix{Float64}, time, ms)
     
     return x_avg, y_avg
 end
+
+function export_texture(file::String, m_evol::Any, lattice::Matrix{Float64}, Lx, Ly)
+    # Assume m_evol is a vector of snapshots.
+    # Each snapshot is a Vector{SVector{3, Float64}} (magnetization at each site).
+    # Each snapshot contains N=Lx*Ly sites, and there are P snapshots in total.
+
+    # Initialize a 2D array to store the flattened data
+    # We will store 3 components (x, y, z) for each site, so the number of columns will be 3*N
+    P = length(m_evol)     # Number of snapshots
+
+    # Create an empty 1D array to store the flattened data
+    flattened_m_evol = Float64[]  
+
+    # Loop over each snapshot and flatten it
+    for snapshot in m_evol
+        # For each snapshot, we create a 1D array that stores the x, y, z components for each site
+        snapshot_flat = Float64[]  # Temporary array for one snapshot
+        
+        for vec in snapshot 
+            append!(snapshot_flat, vec[1], vec[2], vec[3])  # Add x, y, z components
+        end
+
+        # Append this flattened snapshot to the final array
+        append!(flattened_m_evol, snapshot_flat)
+    end
+    # flattened_m_evol is a 1D array that holds all components for all snapshots
+
+    flattened_2d = reshape(flattened_m_evol, (3*Lx*Ly, P))
+
+    # Now transpose(flattened_2d) is a 2D array with:
+    # - P rows (each row corresponds to a snapshot)
+    # - 3*N columns (each set of 3 columns corresponds to the x, y, z components of a site)
+    # The final result is a 2D array with size (P, 3*N)
+
+    # Open the file in read/write mode, creating it if it doesn't exist
+    h5open(file, "w") do h5file
+        # Define the datasets and their corresponding values
+        datasets = Dict(
+            "lattice" => lattice,
+            "m_evol" => Matrix(flattened_2d'),
+            "P" => P,
+            "Lx" => Lx,
+            "Ly" => Ly
+        )
+
+        for (key, value) in datasets
+            # If the dataset exists, delete it
+            if haskey(h5file, key)
+                delete_object(h5file, key)
+            end
+
+            # Write the new dataset
+            h5file[key] = value
+        end
+    end
+
+    @info "Saved m(t) to $file"
+end
     
 
 let 
-    Lx,Ly = 31,15
+    Lx,Ly = 45,25   
     Ld = 12
     case = "SK" # "rand"/"FM"/"SK"
     ms = 1/2  
     J = -1.0 
     # D = J*2*π/Ld   
     D = 0.5*J
-    # B = 1.2 * J * 0.5^2 * D^2 * [0.0, 0.0, 1.0] /ms  
-    B = [0.0, 0.0, 0.075*J]/ms
+    B = 1.2 * J * 0.5^2 * D^2 * [0.0, 0.0, 1.0] /ms  
     α = 1.0
     alpha_axis = 1
     w = 1.5 
@@ -362,9 +419,10 @@ let
 
     prec(x,y) = -x * ms / (1 + (y*ms)^2)        
     damp(x,y) = -x * y * ms^2 / (1 + (y*ms)^2)
-    
-    Γ = prec(1.0, -1.0)
-    τ = damp(1.0, -1.0)
+
+    g = -1.0
+    Γ = prec(g, 1.0)
+    τ = damp(g, 1.0)
     dt = 0.1
     steps = Int(1e4) #the minimum is 1e3 time steps
 
@@ -393,77 +451,85 @@ let
     Bg = zeros(3)
     m = initialize_m(case, lattice, D, α, w, R, ecc) # array of arrays; rows label site moments and columns projections
     vacuum = [normalize(SVector(0.0, 0.0, 1.0)) for _ in 1:size(lattice,2)] 
-    energy = calculate_energy(m, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis) - 
-        calculate_energy(vacuum, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis)
+    Evac = calculate_energy(vacuum, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis)
+    energy = calculate_energy(m, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis) - Evac
     println("Relative energy of initial state is: $energy")
     
-    # m_evol[i] is the configuration at (i-1)-th time step
-    m_evol, ctr = llg_solver_rk4(m, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis, Γ, τ, dt, steps, true)   
-    energy = calculate_energy(m_evol[ctr], lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis) - 
-        calculate_energy(vacuum, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis)
+    # m_relax[i] is the configuration at (i-1)-th time step
+    m_relax, ctr = llg_solver_rk4(m, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, α, alpha_axis, Γ, τ, dt, steps, true)   
+    energy = calculate_energy(m_relax[ctr], lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis) - Evac
     println("Relative energy of relaxed state is: $energy")
+    time = 1:ctr
+
+    # plot_m_texture(m_relax[1],lattice,ms) # plots initial texture
+    # plot_m_texture(m_relax[ctr],lattice,ms) # plots final texture
+    # plot_avg_m_projections(m_relax,time)    # plots m projection as functions of time
+    # plot_avg_torque(m_relax, lattice, boundary, nn_idxs_LL, nn_idxs_LB, time, B, Bg, J, D, α, alpha_axis) # plots average torque as a function of time
+
+    # ################################################################################################# 
+    # ################################################################################################# 
+    
+    Γ = prec(g, 0.0)
+    τ = damp(g, 0.0)
+    dt = 0.01
+    steps = 2*Int(1e4) 
+    Bg = 2 * J * 0.02 / Ly * [0.0, 0.0, 1.0] /ms 
+    
+    m_evol, ctr = llg_solver_rk4(m, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, α, alpha_axis, Γ, τ, dt, steps, false)  
+    energy = calculate_energy(m_evol[ctr], lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis) - Evac
+    println("energy of final time-evolved state is: $energy")
     time = 1:ctr
 
     # plot_m_texture(m_evol[1],lattice,ms) # plots initial texture
     # plot_m_texture(m_evol[ctr],lattice,ms) # plots final texture
     # plot_avg_m_projections(m_evol,time)    # plots m projection as functions of time
-    # plot_avg_torque(m_evol, lattice, boundary, nn_idxs_LL, nn_idxs_LB, time, B, Bg, J, D, ms, α, alpha_axis) # plots average torque as a function of time
+    # plot_avg_torque(m_evol, lattice, boundary, nn_idxs_LL, nn_idxs_LB, time, B, Bg, J, D, α, alpha_axis) # plots average torque as a function of time
 
-    # ################################################################################################# 
-    # ################################################################################################# 
-
-    Γ = prec(1.0, 0.0)
-    τ = damp(1.0, 0.0)
-    dt = 0.01
-    steps = Int(1e4) 
-    Bg = -2 * 0.02 / Ly * [0.0, 0.0, 1.0] /ms 
+    Ns = [sum(mag[3] - 1 for mag in m_evol[t])/(Lx*Ly) for t in time]
+    vel = 0.02 * Lx * g * mean(Ns) / (2 * π)
     
-
-    m_evol2, ctr = llg_solver_rk4(m, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis, Γ, τ, dt, steps, false)  
-    energy = calculate_energy(m_evol2[ctr], lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis) - 
-        calculate_energy(vacuum, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis)
-    println("energy of final time-evolved state is: $energy")
-    time = 1:ctr
-
-    plot_m_texture(m_evol2[1],lattice,ms) # plots initial texture
-    plot_m_texture(m_evol2[ctr],lattice,ms) # plots final texture
-    # plot_avg_m_projections(m_evol2,time)    # plots m projection as functions of time
-    # plot_avg_torque(m_evol2, lattice, boundary, nn_idxs_LL, nn_idxs_LB, time, B, Bg, J, D, ms, α, alpha_axis) # plots average torque as a function of time
-
-    x_com, y_com = calculate_rs(m_evol2, lattice, time, ms)
+    x_com, y_com = calculate_rs(m_evol, lattice, time)
+    
+    poly_fit = fit(dt*time, x_com, 1)
+    fit_slope = coeffs(poly_fit)[2]  
+    fit_intercept = coeffs(poly_fit)[1]  
+    fit_line = [fit_slope*t*dt + fit_intercept for t in time]
+    pos = [vel*t*dt for t in time]
+    println("Difference of analytical vs fitted slope: $(abs(fit_slope-vel))")
+    println("Velocity: $vel")
+    # The analytical velocity matches the fit pretty well but the fitted curve never starts from x=0, i.e., fit_intercept ≠ 0  
+    println("Intercept: $fit_intercept")  
 
     plt.figure()
     plot(dt*time,x_com)
+    plot(dt*time, pos)
+    plot(dt*time, fit_line, label="Linear Fit", linestyle=":")
     ylabel("x(t)")
-    plt.figure()
-    plot(dt*time,y_com)
-    ylabel("y(t)")
+    plt.show()
+    plt.savefig("atomistic_solver/skyrmion_trajectory.png",dpi=600)
 
-    plt.figure()
-    N = zeros(length(time))
-    Ns(t) = sum((ms - mag[3]) for mag in m_evol2[t])*(1/Lx*Ly)
-    for (idx,t) in enumerate(time)
-        N[idx] = Ns(t)
-    end
-    plot(dt*time,N)
-    ylabel("Ns(t)")
+    # plt.show()
+    # plt.figure()
+    # plot(dt*time,y_com)
+    # ylabel("y(t)")
+    # plt.show()
 
+    # plt.figure()
+    # energy_vec = zeros(length(time))
+    # for t in time
+    #     energy_vec[t] = calculate_energy(m_evol[t], lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis) - Evac   
+    # end
+    # plot(dt*time,energy_vec)
+    # plt.show()
 
+    file_name = "atomistic_solver/m_evol_flattened.h5"
+    export_texture(file_name, m_evol, lattice, Lx, Ly)
 
-
-
-
-
-
-
-
-
-
-
+    
     return
 end
 
-    # For plotting the lattice  ############################################
+    # For plotting the lattice  ##############################################################
 
     # plt.scatter(lattice[1,:], lattice[2,:])
     # plt.scatter(boundary[1,:], boundary[2,:])
@@ -473,4 +539,64 @@ end
     # for id in axes(boundary, 2)
     #     plt.text(boundary[1,id], boundary[2,id], "$id")
     # end
+    # plt.show()
+
+    # For plotting a 2D picture of the texture ###############################################
+
+
+    # function plot_magnetization_2D(lattice::Matrix{Float64}, m::Any)
+        
+    #     fig, ax = subplots()
+    #     ax.set_aspect("equal")
+    #     # ax.set_xlabel("x")
+    #     # ax.set_ylabel("y")
+    #     ax.spines["top"].set_visible(false)
+    #     ax.spines["right"].set_visible(false)
+    #     ax.spines["left"].set_visible(false)
+    #     ax.spines["bottom"].set_visible(false)
+    #     ax.tick_params(left=false, bottom=false, labelleft=false, labelbottom=false)
+
+    #     cmap = plt.cm["RdBu_r"]
+
+    #     mz_values = [m[i][3] for i in eachindex(m)]
+    #     mz_normalized = (mz_values .+ 1) ./ 2  
+
+    #     # Loop through spins
+    #     for i in 1:size(lattice, 2)
+    #         x, y = lattice[1, i], lattice[2, i]
+            
+    #         clr = cmap(mz_normalized[i])
+
+    #         # Plot the square centered on the spin
+    #         ax.add_patch(plt.Rectangle((x - 0.5, y - 0.5), 1.0, 1.0, color=clr))
+    #         ax.quiver(x, y, m[i][1], m[i][2], 
+    #         angles="xy", scale_units="xy", scale=1, color="white", pivot="middle", width=0.005)
+    #     end
+
+    #     tight_layout()
+    #     show()
+    #     plt.savefig("atomistic_solver/texture.png",dpi=600)
+    # end
+
+    # plot_magnetization_2D(lattice, m_evol[1])
+
+    # visualising the movement of the skyrmion using a slice of the lattice ######################################
+
+    # inds = (lattice[2,1:end] .≈ 0)
+
+    # mag = m_evol[1][inds]
+    # x_aux = sum(lattice[1,inds][id]*(1 - v[3]) for (id,v) in enumerate(mag))
+    # Ns = sum(1 - v[3] for (id,v) in enumerate(mag))
+    # x_avg = x_aux/Ns
+    # @show x_avg
+
+    # mag = m_evol[ctr][inds]
+    # x_aux = sum(lattice[1,inds][id]*(1 - v[3]) for (id,v) in enumerate(mag))
+    # Ns = sum(1 - v[3] for (id,v) in enumerate(mag))
+    # x_avg = x_aux/Ns
+    # @show x_avg
+    
+    # plt.figure()
+    # plot(lattice[1,inds], m_evol[1][inds])
+    # plot(lattice[1,inds], m_evol[ctr][inds])
     # plt.show()
