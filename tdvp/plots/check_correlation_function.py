@@ -2,19 +2,19 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-fn = "sk1/state_corr.csv"
+fn = "sk16/state_corr.csv"
 df = pd.read_csv(fn)
 data1 = df
 
-fn = "sk1/conj_state_corr.csv"
+fn = "sk16/conj_state_corr.csv"
 df = pd.read_csv(fn)
 data2 = df
 
-fn = "sk1/mixed_corr.csv"
+fn = "sk16/mixed_corr.csv"
 df = pd.read_csv(fn)
 data3 = df
 
-fn = "sk1/symmetric_superposition_corr.csv"
+fn = "sk16/symmetric_superposition_corr.csv"
 df = pd.read_csv(fn)
 data_symm = df
 
