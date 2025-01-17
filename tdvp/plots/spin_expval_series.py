@@ -22,7 +22,7 @@ fs = 1070  # 13 X 13
 # fs = 1690  # 21 x 21
 fs = 2450  # 31 x 31
 # fs = 3400  # 45 x 15
-in_dir = 'sk8_neg'
+in_dir = 'sk8'
 mkr = 's'
 my_dpi = 300
 ffmt = ''
@@ -46,7 +46,7 @@ fns = np.sort(ff.find_files(f'*{str}.csv', in_dir))
 
 make_averages_csv = True
 plot_individuals = True
-use_vlad_colorcode = False
+use_vlad_colorcode = True
 
 nstates = 1
 fig, ax = plt.subplots()
@@ -61,11 +61,13 @@ for (idfn, fn) in enumerate(fns):
     data = pd.read_csv(fn)
 
     times = np.unique(data['t'])
+    # times = np.flip(times)
 
     for (idt,time) in enumerate(times):
         print(idt)
         data_slice = data[data['t']==time]
         x, y, Sx, Sy, Sz = data_slice['x'], data_slice['y'], data_slice['S_x'], data_slice['S_y'], data_slice['S_z']
+        # Sy *= -1
         S = (Sx**2 + Sy**2 + Sz**2)**(1/2)
         Ox, Oy, Oz = Sx/S, Sy/S, Sz/S
 
@@ -80,27 +82,30 @@ for (idfn, fn) in enumerate(fns):
 
         normdev = abs(vabs-S)
         normdev = normdev/vabs
-        print(min(normdev), max(normdev))
+        # print(min(normdev), max(normdev))
 
         if use_vlad_colorcode:
             # imag = ax.scatter(x, y, cmap='RdBu_r', c=Sz, marker=mkr, s=90, vmin=-vabs, vmax=vabs)
             for (xi,yi,sx,sy,sz,ds) in zip(x,y,Sx,Sy,Sz,normdev):
                 sn = (sx**2+sy**2+sz**2)**0.5
                 color = hsv2rgb([sx/sn,sy/sn,sz/sn],0,0)
-                ax.scatter(xi, yi, c=ds/2, cmap='Greys', marker='s', s=90, vmin=0, vmax=vabs, edgecolor='None')
+                # ax.scatter(xi, yi, c=ds/2, cmap='Greys', marker='s', s=90, vmin=0, vmax=vabs, edgecolor='None')
                 # imag = ax.scatter(xi, yi, facecolor=color, edgecolor='None', marker='o', s=90*0.2*sn)
-                ax.quiver(xi, yi, sx, sy, units='xy', width=0.1, scale=vabs*2*sn, pivot='middle', color=color)
+                # ax.quiver(xi, yi, sx, sy, units='xy', width=0.1, scale=vabs*2*sn, pivot='middle', color=color)
+                ax.scatter(xi, yi, marker='s', color=color, s=90, edgecolors='none')
         else:
             imag = ax.scatter(x, y, cmap='RdBu_r', c=Sz, marker=mkr, s=90, vmin=-vabs, vmax=vabs, edgecolors='none')
             ax.quiver(x, y, Sx, Sy, units='xy', width=0.1, scale=vabs*1, pivot='middle', color='white')
 
         mmy = np.asarray([np.min(y),np.max(y)])
         mmx = np.asarray([np.min(x),np.max(x)])
-        ax.set_ylim(1.5*mmy)
+        ax.set_ylim(2*mmy)
         ax.set_xlim(1.5*mmx)
+        print(2/1.5)
+
         ax.axis('off')
         ax.set_aspect('equal')
 
         dtn = f"{idt}".zfill(4)
-        plt.savefig(f'{out_dir}/{dtn}mag{ffmt}', pad_inches=0, bbox_inches='tight', dpi=my_dpi)
+        plt.savefig(f'{out_dir}/{dtn}mag{ffmt}', pad_inches=0, bbox_inches='tight', dpi=my_dpi, transparent=True)
         ax.cla()
