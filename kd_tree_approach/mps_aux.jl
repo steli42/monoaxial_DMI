@@ -1,4 +1,4 @@
-using ITensors, ITensorMPS, Printf, LinearAlgebra
+using ITensors, ITensorMPS, Printf, LinearAlgebra, Statistics
 
 function epsilon(i, j, k)
     if (i, j, k) in ((1, 2, 3), (2, 3, 1), (3, 1, 2))
@@ -13,7 +13,7 @@ end
 function meshgrid(x_range, y_range)
     X = repeat(x_range', length(y_range), 1)
     Y = repeat(y_range, 1, length(x_range))
-    return X, Y
+    return X', Y' # transposing X,Y since we prefer column-major indexing: X coordinates vary along columns and Y coordinates vary along rows
 end
 
 function c2s(vec)
@@ -23,13 +23,22 @@ function c2s(vec)
     return [r, t, p]
 end
 
+function ez_rotation(vec, phi)
+
+    Rz = [cos(phi) sin(phi); -sin(phi) cos(phi)]
+    vec_new = zeros(length(vec))
+    for i in axes(Rz, 1), j in axes(Rz, 2)
+      vec_new[i] += Rz[i, j] * vec[j]
+    end
+    return vec_new
+end
+
 function build_lattice(Lx::Int64, Ly::Int64, geometry::String)  # construct lattice sites 
     if geometry == "rectangular"
         a1 = [1,0]
         a2 = [0,1]
-    elseif geometry == "triangular"
-        a1 = [1, sqrt(3)/2]
-        a2 = [0, sqrt(3)/2]   
+    else
+        throw(ArgumentError("Unsupported geometry type"))    
     end
 
     lattice = zeros(2, Lx*Ly)
@@ -84,6 +93,18 @@ function construct_PS(case::String, lattice_Q::Array{Float64,2}, D, α, w, R, ec
             θϕ[1, idx] += θ - π
             θϕ[2, idx] += sign(α) * (ϕ + sign(D) * π / 2)
             #end
+        end
+        ψ₀ = rotate_MPS(ψ₀, θϕ)
+    elseif case == "spiral"
+        @info "Helical configuration..."
+        ψ₀ = MPS(sites, ["Up" for s in sites])
+        θϕ = zeros(2, size(lattice_Q, 2))
+        Lx = length(unique(lattice_Q[1, :]))
+
+        for idx in axes(lattice_Q, 2)
+            x = lattice_Q[1, idx] + floor(Lx/2)
+            θ = 2 * π * x / Lx
+            θϕ[1, idx] += θ
         end
         ψ₀ = rotate_MPS(ψ₀, θϕ)
     end

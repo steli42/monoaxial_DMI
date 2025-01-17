@@ -4,11 +4,11 @@ include("mps_aux.jl")
 
 let
   
-  f = h5open("kd_tree_approach/states/Q0_0_orig.h5", "r")
+  f = h5open("kd_tree_approach/states/0_0_orig.h5", "r")
   ψ₁ = read(f, "Psi", MPS)
   close(f)
 
-  f = h5open("kd_tree_approach/states/Q0_0_conj.h5", "r")
+  f = h5open("kd_tree_approach/states/0_0_conj.h5", "r")
   ψ₂ = read(f, "Psi_c", MPS)
   close(f)
 
@@ -18,7 +18,7 @@ let
 
   c₁ = 0
   ϕ = 0
-  φ = π/2 
+  φ = 0 
 
   Ψ = c₁ * exp(-im * ϕ) * ψ₂ + sqrt(1 - c₁^2) * ψ₁
   # psi_new = copy(Ψ)    # This block applies sigma_y to each site; this flipping the sign of x and z projections
@@ -66,7 +66,4 @@ let
   ax.set_aspect("equal")
   plt.show()
   close(f)
-
-  Q = calculate_TopoCharge(Mx, My, Mz)
-  @show Q
 end
