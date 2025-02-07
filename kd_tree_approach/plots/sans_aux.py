@@ -111,8 +111,11 @@ def calculate_differential_cross_section(data_dir, S_elements, polarised=False):
             q_squared_val = q_squared[i, j]
 
             if q_squared_val == 0:
-                # Handle the q = 0 case separately
-                sigma[i, j] = Szz[i, j] + Sxx[i, j] + Syy[i, j]
+
+                if polarised == False:
+                    sigma[i, j] = Szz[i, j] + Sxx[i, j] + Syy[i, j]
+                else: 
+                    sigma[i, j] = Sxx[i, j] + Syy[i, j]
             else:
                 qx2_over_q2 = (qx_val ** 2) / q_squared_val
                 qy2_over_q2 = (qy_val ** 2) / q_squared_val
@@ -161,11 +164,15 @@ def plot_differential_cross_section(data_dir, output_image, qx_min, qx_max, S_el
     plt.close()
 
 def plot_connected_cross_section(data_dir, output_image, qx_min, qx_max, S_elements1, S_elements2, 
-                                 polarised=False, cmap="plasma", vmin=None, vmax=None, log_scale=False):
+                                 polarised, cmap="plasma", vmin=None, vmax=None, log_scale=False):
     qx, qy, sigma1 = calculate_differential_cross_section(data_dir, S_elements1, polarised)
     _, _, sigma2 = calculate_differential_cross_section(data_dir, S_elements2, polarised)
     sigma = sigma1 - sigma2
 
+    # use this cheat in the case of the annoying dot error
+    idx_x, idx_y = np.where((qx == 0) & (qy == 0))
+    sigma[idx_x,idx_y] = 1/2*(sigma[idx_x-1,idx_y] + sigma[idx_x,idx_y+1])
+    
     if log_scale:
         sigma = np.where(sigma > 0, sigma, np.nan) 
         sigma_log = np.log10(sigma)

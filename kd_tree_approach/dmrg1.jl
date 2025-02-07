@@ -1,7 +1,7 @@
-import ITensors.ITensorMPS.AbstractMPS
-import ITensors.ITensorMPS.check_hascommoninds
+import ITensorMPS.AbstractMPS
+import ITensorMPS.check_hascommoninds
 import ITensors.orthocenter
-import ITensors.ITensorMPS.eigsolve
+import ITensorMPS.eigsolve
 include("projmpo1.jl")
 """
     dmrg1(H::MPO,psi0::MPS;kwargs...)
@@ -258,7 +258,7 @@ function dmrg1(PH, psi0::MPS, sweeps::Sweeps; kwargs...)
     N = length(psi)
 
     if !isortho(psi) || orthocenter(psi) != 1
-        ITensors.orthogonalize!(psi, 1)
+        ITensorMPS.orthogonalize!(psi, 1)
     end
     @assert isortho(psi) && orthocenter(psi) == 1
 

@@ -1,8 +1,8 @@
 import h5py
-import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm  # for the progress bars
 import os
-from tqdm import tqdm  
+import glob
 
 def plot_magnetization_2D(snapshot_dir, lattice, m, snapshot_id, Lx, Ly):
     """
@@ -17,7 +17,7 @@ def plot_magnetization_2D(snapshot_dir, lattice, m, snapshot_id, Lx, Ly):
     """
     m = m.reshape((-1, 3))
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(2,2))
     ax.set_aspect('equal')
     ax.axis('off')  # Turn off axis labels and ticks
 
@@ -41,7 +41,8 @@ def plot_magnetization_2D(snapshot_dir, lattice, m, snapshot_id, Lx, Ly):
 
 if __name__ == "__main__": 
     
-    file = "atomistic_solver/m_evol_flattened.h5"
+    file = "atomistic_solver/m_evol.h5"
+    # file = "atomistic_solver/m_relaxation.h5"
 
     with h5py.File(file, "r") as h5file:
         lattice = h5file["lattice"][:]
@@ -50,20 +51,15 @@ if __name__ == "__main__":
         Lx = int(h5file["Lx"][()])
         Ly = int(h5file["Ly"][()])
 
-    # Ensure the snapshots directory exists
+    
     snapshot_dir = os.path.join("atomistic_solver", "snapshots")
     os.makedirs(snapshot_dir, exist_ok=True)
 
-    # Clear all files in the directory
-    for filename in os.listdir(snapshot_dir):
-        file_path = os.path.join(snapshot_dir, filename)
-        if os.path.isfile(file_path):
-            with open(file_path, 'w') as file:
-                pass  # Clear the file content
-            
 
-
-    # Iterate through the snapshots and plot
+    for file in glob.glob(os.path.join(snapshot_dir, "*.png")):
+        os.remove(file)
+    
+    
     incr = 100
     id = 1 
     for i in tqdm(range(0, P, incr), desc="Generating snapshots"):
@@ -72,6 +68,6 @@ if __name__ == "__main__":
 
 
 
-# ffmpeg -framerate 24 -i snapshots/shot_%d.png -c:v libx264 -pix_fmt yuv420p movie.mp4
+# ffmpeg -framerate 64 -i snapshots/shot_%d.png -c:v libx264 -pix_fmt yuv420p movie.mp4
 
 

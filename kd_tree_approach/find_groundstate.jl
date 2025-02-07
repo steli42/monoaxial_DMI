@@ -1,24 +1,29 @@
-using NearestNeighbors, Statistics, ITensors, Printf, LinearAlgebra, SparseArrays, HDF5
-import ITensors.ITensorMPS.promote_itensor_eltype, ITensors.ITensorMPS._op_prod
+using NearestNeighbors, Statistics, LinearAlgebra, SparseArrays, ITensors, ITensorMPS 
+using HDF5, Printf, JSON 
+import ITensorMPS: dmrg_x
+import ITensorMPS.promote_itensor_eltype, ITensorMPS._op_prod
+
 # using PyPlot
+# pygui(true)
+
 include("projmpo1.jl")
 include("dmrg1.jl")
 include("mps_aux.jl")
-#pygui(true)
+include("my_dmrg_x.jl")
 
 function build_hamiltonian(sites::Vector{Index{Int64}}, lattice_Q::Array{Float64,2}, lattice_C::Array{Float64,2},
-        nn_idxs_QQ::Vector{Vector{Int}}, nn_idxs_QC::Vector{Vector{Int}}, θϕ, Bcr, J, D, α, alpha_axis::Int64)
+        nn_idxs_QQ::Vector{Vector{Int}}, nn_idxs_QC::Vector{Vector{Int}}, θϕ, B_amp, J, D, α, alpha_axis::Int64)
 
     Sv = ["Sx", "Sy", "Sz"] 
     θ = θϕ[1]
     ϕ = θϕ[2]
-    B = Bcr * [sin(θ)*cos(ϕ), sin(θ)*sin(ϕ), cos(θ)]
-    # e_z gives the direction of polarised boundary, Bcr = 0.0 is just a limit case that we sometimes use to benchmark calculations
-    if Bcr == 0.0
+    B = B_amp * [sin(θ)*cos(ϕ), sin(θ)*sin(ϕ), cos(θ)]
+    # e_z gives the direction of polarised boundary, B_amp = 0.0 is just a limit case that we sometimes use to benchmark calculations
+    if B_amp == 0.0
         e_z = [sin(θ)*cos(ϕ), sin(θ)*sin(ϕ), cos(θ)] 
     else
         # the polarised boundary spins should be oriented opposite the field since we have a + sign before the Zeeman term
-        e_z = -sign(Bcr) * [sin(θ)*cos(ϕ), sin(θ)*sin(ϕ), cos(θ)] 
+        e_z = -sign(B_amp) * [sin(θ)*cos(ϕ), sin(θ)*sin(ϕ), cos(θ)] 
     end         
 
     ampo = OpSum()
@@ -92,48 +97,35 @@ function apply_symmetry(psi::MPS, alpha_axis::Int64)
     return psi_new
 end
 
+
 let
 
-    case = "SK"  #keywords: "SK" - skyrmion or antiskyrmion based on (α,w,R,ecc); "rand" - random
-    w = 1.5
-    R = 4.5
-    ecc = 1.0
+    base_dir = "kd_tree_approach"
+    config_path = joinpath("kd_tree_approach","config.json")
+    states_dir = joinpath(base_dir,"states")
+    mag_dir = joinpath(states_dir, "magnetisations")
 
-    sweep_count = 50
-    M = 20
-    cutoff_tol = 0
-    E_tol = 1e-8
-    oplvl = 1.0
+    p = load_constants(config_path)
+
+    Lx, Ly = p["Lx"], p["Ly"]
+    J = p["J"]
+    D = 2*π/Ly/J  
+    θϕ = [0.0, 0.0] # angle of the B field
+    B_amp = p["B_amp"]*(D/2)^2/J   
     isAdiabatic = true
 
-    δ = 0.02
-    Δ = 0.2
-    Lx, Ly = 15, 15
-    J = -1.0
-    D = -2*π/Lx  
-    θϕ = [0.0, 0.0] # angle of the field
-    Bcr = -(D/2)^2   # instead of setting to zero better fix B = -ε since we feed Bcr to sign() 
-    # moreover, it seems easy to switch the sign of Bcr and therefore direction of B, but then one must choose an
-    # appropriate initial state that matches the expected polarity of the skyrmion. So its best to keep Bcr < 0
-
-    alpha_axis = 1  
+    Δ = 0.2  
+    δ = Δ
     αₘ = 1.0
     α_range₁ = αₘ:-Δ:0.2
     α_range₂ = 0.2:-δ:0.0
     α_values_pos = unique(collect(Iterators.flatten((α_range₁,α_range₂))))
     α_values_neg = sort(map(x -> -x, α_values_pos))
-
-    base_dir = "kd_tree_approach"
-    states_dir = joinpath(base_dir,"states")
-    original_dir = joinpath(states_dir, "original")
-    conjugated_dir = joinpath(states_dir, "conjugated")
-    mkpath(original_dir)
-    mkpath(conjugated_dir)
     
     # construct quantum and classical lattice sites
     geom = "rectangular"
-    lattice_Q = build_lattice(Lx, Ly, geom)
-    lattice_C = build_lattice(Lx+2, Ly+2, geom)
+    lattice_Q = build_lattice(p["Lx"], p["Ly"], geom)
+    lattice_C = build_lattice(p["Lx"]+2, p["Ly"]+2, geom)
 
     idxs_QC = []
     for lC in axes(lattice_C, 2)
@@ -153,23 +145,14 @@ let
     nn_idxs = inrange(tree_Q, tree_Q.data, 1.01)  # return list of onsite and nearest neighbors indices
     nn_idxs_QQ = setdiff.(nn_idxs, onsite_idxs)  # subtract onsite indices so that only legit nearest-neighbors remain
     nn_idxs_QC = inrange(tree_Q, tree_C.data, 1.01) # return list of nearest neighbors between classical and quantum sites
-    
-    # plt.scatter(lattice_Q[1,:], lattice_Q[2,:])
-    # plt.scatter(lattice_C[1,:], lattice_C[2,:])
-    # for id in axes(lattice_Q, 2)
-    #     plt.text(lattice_Q[1,id], lattice_Q[2,id], "$id")
-    # end
-    # for id in axes(lattice_C, 2)
-    #     plt.text(lattice_C[1,id], lattice_C[2,id], "$id")
-    # end
-    # plt.show()
 
     Energies = []
 
-    ψ₀, sites = construct_PS(case, lattice_Q, D, αₘ, w, R, ecc)
-    for α in α_values_pos 
+    M = p["bonddim"]
+    ψ₀, sites = construct_PS(p["initial_PS"], lattice_Q, D, αₘ, p["wall"], p["radius"], p["eccentricity"])
+    for α in [0.0] # α_values_pos 
 
-        H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, θϕ, Bcr, J, D, α, alpha_axis)
+        H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, θϕ, B_amp, J, D, α, p["alpha_axis"])
 
         while maxlinkdim(ψ₀) < M
             @info "$(maxlinkdim(ψ₀)), $(M): Grow bond dimension..."
@@ -179,14 +162,18 @@ let
     
         normalize!(ψ₀)
 
-        sweeps = Sweeps(sweep_count)  # initialize sweeps object
+        sweeps = Sweeps(p["sweeps"])  # initialize sweeps object
         maxdim!(sweeps, M)  # set maximum link dimension
-        cutoff!(sweeps, cutoff_tol)  
-        obs = DMRGObserver(; energy_tol = E_tol, minsweeps = 10)
-        E, ψ = dmrg1(H, ψ₀, sweeps, observer = obs, outputlevel = oplvl)
-        # E, ψ = dmrg(H, ψ₀; nsweeps = sweep_count, maxdim = M, cutoff = cutoff_tol, observer = obs, outputlevel = oplvl)
+        cutoff!(sweeps, p["cutoff_tol"])  # set minimal eigenvals considered
+        obs = DMRGObserver(; energy_tol = p["E_tol"], minsweeps = 10)
+        # E, ψ = dmrg(H, ψ₀; nsweeps = p["sweeps"], maxdim = p["M"], cutoff = p["cutoff_tol"], observer = obs, outputlevel = p["oplvl"])
+        # E, ψ = dmrg1(H, ψ₀, sweeps, observer = obs, outputlevel = p["oplvl"])
 
-        σ = inner(H,ψ,H,ψ) - E^2
+        E, ψ = dmrg_x(H, ψ₀; nsweeps = p["sweeps"], maxdim = M, cutoff = p["cutoff_tol"], outputlevel = p["oplvl"])
+        # E, ψ = my_dmrg_x(H, ψ₀, nsweeps = p["sweeps"], maxdim = M, outputlevel = p["oplvl"])
+        normalize!(ψ)
+
+        # σ = inner(H,ψ,H,ψ) - E^2
         
         if isAdiabatic
             ψ₀ = ψ
@@ -195,108 +182,46 @@ let
         sx_expval = expect(ψ, "Sx")
         sy_expval = expect(ψ, "Sy")
         sz_expval = expect(ψ, "Sz")
-            
-        formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
-        original_file_path = joinpath(original_dir, "$(formatted_alpha)_orig.csv")
-        conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_conj.csv")
 
-        write_mag_to_csv(original_file_path, lattice_Q, sx_expval, sy_expval, sz_expval)
-
-        println("For alpha = $α: Final energy of psi = $E")
-        println("For alpha = $α: Final energy variance of psi = $σ")
-
-        ###################################################################################
-        ψ_c = apply_symmetry(ψ, alpha_axis)
-        E_c = inner(ψ_c', H, ψ_c)
-        σ_c = inner(H, ψ_c, H, ψ_c) - E_c^2
-
-        sx_expval_c = expect(ψ_c, "Sx")
-        sy_expval_c = expect(ψ_c, "Sy")
-        sz_expval_c = expect(ψ_c, "Sz")
-    
         Q = calculate_topological_charge(sx_expval, sy_expval, sz_expval, lattice_Q, Lx, Ly)
         println("The topological charge Q is: $Q")
+            
+        formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
+        mag_file_path = joinpath(mag_dir, "$(formatted_alpha)_mag_$(Lx)x$(Ly).csv")
+        write_mag_to_csv(mag_file_path, lattice_Q, sx_expval, sy_expval, sz_expval)
 
-        write_mag_to_csv(conjugated_file_path, lattice_Q, sx_expval_c, sy_expval_c, sz_expval_c)
+        println("For alpha = $α: Final energy of psi = $E")
+        # println("For alpha = $α: Final energy variance of psi = $σ")
 
-        println("For alpha = $α: Final energy of psi conjugated = $E_c")
-        println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
+        ###################################################################################
+        # ψ_c = apply_symmetry(ψ, p["alpha_axis"])
+        # E_c = inner(ψ_c', H, ψ_c)
+        # σ_c = inner(H, ψ_c, H, ψ_c) - E_c^2
+
+        # sx_expval_c = expect(ψ_c, "Sx")
+        # sy_expval_c = expect(ψ_c, "Sy")
+        # sz_expval_c = expect(ψ_c, "Sz")
+    
+        # Q = calculate_topological_charge(sx_expval_c, sy_expval_c, sz_expval_c, lattice_Q, p["Lx"], p["Ly"])
+        # println("The topological charge Q is: $Q")
+
+        # println("For alpha = $α: Final energy of psi conjugated = $E_c")
+        # println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
 
         # Save MPS
-        file_path = joinpath(states_dir, "$(formatted_alpha)_orig.h5")
+        file_path = joinpath(states_dir, "$(formatted_alpha)_state.h5")
         psi_file = h5open(file_path, "w")
         write(psi_file, "Psi", ψ)
         close(psi_file)
 
-        file_path = joinpath(states_dir, "$(formatted_alpha)_conj.h5")
-        psi_file_conj = h5open(file_path,"w")
-        write(psi_file_conj,"Psi_c",ψ_c)
-        close(psi_file_conj)
-
-        push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c))) 
+        # push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c))) 
 
     end
 
-    # ψ₀, sites = construct_PS(case, lattice_Q, D, -αₘ, w, R, ecc)
-    # for α in α_values_neg
-
-    #     H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, θϕ, Bcr, J, D, α, alpha_axis)
-
-    #     while maxlinkdim(ψ₀) < M
-    #         @info "$(maxlinkdim(ψ₀)), $(M): Grow bond dimension..."
-    #         ψ₀ = apply(H, ψ₀, maxdim=M, cutoff=0)
-    #     end
-    #     @info "target bond dimension reached..."
-    
-    #     normalize!(ψ₀)
-
-    #     sweeps = Sweeps(sweep_count)  # initialize sweeps object
-    #     maxdim!(sweeps, M)  # set maximum link dimension
-    #     cutoff!(sweeps, cutoff_tol)  
-    #     obs = DMRGObserver(; energy_tol = E_tol, minsweeps = 10)
-    #     E, ψ = dmrg1(H, ψ₀, sweeps, observer = obs, outputlevel = oplvl)
-    #     #E, ψ = dmrg(H, ψ₀; nsweeps = sweep_count, maxdim = M, cutoff = cutoff_tol, observer = obs, outputlevel = oplvl)
-
-    #     σ = inner(H,ψ,H,ψ) - E^2
-        
-    #     if isAdiabatic
-    #         ψ₀ = ψ
-    #     end
-
-    #     sx_expval = expect(ψ, "Sx")
-    #     sy_expval = expect(ψ, "Sy")
-    #     sz_expval = expect(ψ, "Sz") 
-
-    #     formatted_alpha = replace(string(round(α, digits=2)), "." => "_")
-    #     original_file_path = joinpath(original_dir, "$(formatted_alpha)_orig.csv")
-    #     conjugated_file_path = joinpath(conjugated_dir, "$(formatted_alpha)_conjug.csv")
-
-    #     write_mag_to_csv(original_file_path, lattice_Q, sx_expval, sy_expval, sz_expval)
-
-    #     println("For alpha = $α: Final energy of psi = $E")
-    #     println("For alpha = $α: Final energy variance of psi = $σ")
-
-    #     ###################################################################################
-    #     ψ_c = apply_symmetry(ψ, alpha_axis)
-    #     E_c = inner(ψ_c', H, ψ_c)
-    #     σ_c = inner(H, ψ_c, H, ψ_c) - E_c^2
-
-    #     sx_expval_c = expect(ψ_c, "Sx")
-    #     sy_expval_c = expect(ψ_c, "Sy")
-    #     sz_expval_c = expect(ψ_c, "Sz")
-
-    #     write_mag_to_csv(conjugated_file_path, lattice_Q, sx_expval_c, sy_expval_c, sz_expval_c)
-
-    #     println("For alpha = $α: Final energy of psi conjugated = $E_c")
-    #     println("For alpha = $α: Final energy variance of psi conjugated = $σ_c")
-
-    #     push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c)))
-
-    # end
 
     # alphas, E_orig, E_conjug, Sigma_orig, Sigma_conjug = map(collect, zip(Energies...))
   
-    # E_file = open("Energies.csv", "w")
+    # E_file = open(joinpath(base_dir, "energies.csv"), "w")
     #   for i in eachindex(alphas)
     #     @printf E_file "%f,"  alphas[i]
     #     @printf E_file "%f,"  E_orig[i]

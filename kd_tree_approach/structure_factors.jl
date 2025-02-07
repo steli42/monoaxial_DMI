@@ -1,6 +1,8 @@
-using ITensors, HDF5, DelimitedFiles, Statistics
+using ITensors, HDF5, DelimitedFiles, Statistics, JSON
+using PyPlot
 using Base.Threads
 include("mps_aux.jl")
+pygui(true)
 
 _op_prod(o1::AbstractString, o2::AbstractString) = "$o1 * $o2"
 _op_prod(o1::Matrix{<:Number}, o2::Matrix{<:Number}) = o1 * o2
@@ -241,20 +243,25 @@ end
 
 let
 
-  Lx, Ly = 15, 15
+  base_dir = "kd_tree_approach"
+  config_path = joinpath("kd_tree_approach","config.json")
+  p = load_constants(config_path)
+
+  input_dir = joinpath("kd_tree_approach", "states")
+  f = h5open(joinpath(input_dir, "0_0_state.h5"), "r")
+  ψ₁ = read(f, "Psi", MPS)
+  close(f)
+  ψ₂ = conj.(ψ₁)
+
+  Lx, Ly = p["Lx"], p["Ly"]
   lattice = build_lattice(Lx, Ly, "rectangular")
-  φ = pi / 4
-  q_max = 2 * pi / 3 
-  q_step = 0.01 #0.0075
+
+  q_max = p["q_max"]  
+  q_step = p["q_step"]
   # !!! CAREFUL ABOUT THE FERRO FLAG !!!  
   # ferromagnetic polarised states need to be treated with extra care: see gamma_matrix() for detail 
   ferromagnetic = false
 
-  w = 1.5
-  R = 4.5
-  ecc = 1.0
-  D = -2*π/Lx  
-  αₘ = 1.0
 
   elements = [("Sx", "Sx", "S_{xx}"), ("Sx", "Sy", "S_{xy}"), ("Sx", "Sz", "S_{xz}"),
     ("Sy", "Sx", "S_{yx}"), ("Sy", "Sy", "S_{yy}"), ("Sy", "Sz", "S_{yz}"),
@@ -262,14 +269,6 @@ let
   elements_class = [("Sx", "Sx", "G_{xx}"), ("Sx", "Sy", "G_{xy}"), ("Sx", "Sz", "G_{xz}"),
     ("Sy", "Sx", "G_{yx}"), ("Sy", "Sy", "G_{yy}"), ("Sy", "Sz", "G_{yz}"),
     ("Sz", "Sx", "G_{zx}"), ("Sz", "Sy", "G_{zy}"), ("Sz", "Sz", "G_{zz}")]
-
-  input_dir = joinpath("kd_tree_approach", "states")
-  f = h5open(joinpath(input_dir, "Q0_0_orig.h5"), "r")
-  ψ₁ = read(f, "Psi", MPS)
-  close(f)
-  f = h5open(joinpath(input_dir, "Q0_0_conj.h5"), "r")
-  ψ₂ = read(f, "Psi_c", MPS)
-  close(f)
 
   @time for c in [0.0] #[0.0, 1/sqrt(2), 1.0] 
     formatted_c = replace(string(round(c, digits=3)), "." => "_")
@@ -280,56 +279,37 @@ let
 
     Ψ = c * ψ₂ + sqrt(1 - c^2) * ψ₁  # we fix the phase to be ϕ = 0
 
-    Ψ, _ = construct_PS("spiral", lattice, D, αₘ, w, R, ecc)
-    # psi_new = copy(Ψ)    # This block applies sigma_y to each site; thus flipping the sign of x and z projections ---- this is time reversal
-    # for n in eachindex(Ψ)
-    #   sym = 2 * op("Sy", siteinds(Ψ), n)    # factor 2 changes S to sigma
-    #   psi_new[n] = sym * Ψ[n]
-    # end
-    # Ψ = noprime(psi_new)
-
-    # This block of code rotates each spin by angle φ and the lattice correspondingly
-    θφ = zeros(2, length(siteinds(Ψ)))
-    for id in axes(θφ, 2)
-      θφ[2, id] = φ
-    end
-    Ψ = rotate_MPS(Ψ, θφ)
-    # normalize!(Ψ)
-    for id in axes(lattice, 2)
-      lattice[:, id] = ez_rotation(lattice[:, id], -φ)
-    end
-
     if ferromagnetic == true
       sites = siteinds(Ψ)
       Ψ = MPS(sites, ["Up" for s in sites])
       Ψ = normalize(Ψ)
     end
 
-    for (op1, op2, plot_title) in elements
-      println("Calculating structure factor $plot_title ...")
-      qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm = calculate_structureFactor(lattice, Ψ, q_max, q_step, op1, op2)
+    # for (op1, op2, plot_title) in elements
+    #   println("Calculating structure factor $plot_title ...")
+    #   qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm = calculate_structureFactor(lattice, Ψ, q_max, q_step, op1, op2)
 
-      # Save data to CSV files
-      csv_filename = joinpath(output_dir, "$(plot_title).csv")
-      open(csv_filename, "w") do file
-        writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values_real), vec(S_values_imag), vec(S_values_norm)), ',')
-      end
+    #   # Save data to CSV files
+    #   csv_filename = joinpath(output_dir, "$(plot_title).csv")
+    #   open(csv_filename, "w") do file
+    #     writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values_real), vec(S_values_imag), vec(S_values_norm)), ',')
+    #   end
 
-      println("Data for $plot_title saved to $csv_filename")
-    end
+    #   println("Data for $plot_title saved to $csv_filename")
+    # end
 
-    for (op1, op2, plot_title) in elements_class
-      println("Calculating gamma factor $plot_title ...")
-      qx_mesh, qy_mesh, s_values_real, s_values_imag, s_values_norm = calculate_classical_structureFactor(lattice, Ψ, q_max, q_step, op1, op2, ferromagnetic)
+    # for (op1, op2, plot_title) in elements_class
+    #   println("Calculating gamma factor $plot_title ...")
+    #   qx_mesh, qy_mesh, s_values_real, s_values_imag, s_values_norm = calculate_classical_structureFactor(lattice, Ψ, q_max, q_step, op1, op2, ferromagnetic)
 
-      # Save data to CSV files
-      csv_filename = joinpath(output_dir, "$(plot_title).csv")
-      open(csv_filename, "w") do file
-        writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(s_values_real), vec(s_values_imag), vec(s_values_norm)), ',')
-      end
+    #   # Save data to CSV files
+    #   csv_filename = joinpath(output_dir, "$(plot_title).csv")
+    #   open(csv_filename, "w") do file
+    #     writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(s_values_real), vec(s_values_imag), vec(s_values_norm)), ',')
+    #   end
 
-      println("Data for $plot_title saved to $csv_filename")
-    end
+    #   println("Data for $plot_title saved to $csv_filename")
+    # end
 
   end
 
@@ -360,3 +340,25 @@ end
   # end
   # ax.set_aspect("equal")
   # plt.show()
+
+  #########################################################################################################################
+  # This block of code rotates each spin by angle φ and the lattice correspondingly
+  # φ = pi / 4
+  # θφ = zeros(2, length(siteinds(Ψ)))
+  # for id in axes(θφ, 2)
+  #   θφ[2, id] = φ
+  # end
+  # Ψ = rotate_MPS(Ψ, θφ)
+  # normalize!(Ψ)
+  # for id in axes(lattice, 2)
+  #   lattice[:, id] = ez_rotation(lattice[:, id], -φ)
+  # end
+
+  #########################################################################################################################
+  # This block applies sigma_y to each site; thus flipping the sign of x and z projections ---- this is time reversal
+  # psi_new = copy(Ψ)    
+  # for n in eachindex(Ψ)
+  #   sym = 2 * op("Sy", siteinds(Ψ), n)    # factor 2 changes S to sigma
+  #   psi_new[n] = sym * Ψ[n]
+  # end
+  # Ψ = noprime(psi_new)
