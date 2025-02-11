@@ -1,4 +1,4 @@
-using ITensors, Printf, PyPlot, HDF5, LinearAlgebra, JSON
+using ITensors, ITensorMPS, Printf, PyPlot, HDF5, LinearAlgebra, JSON
 pygui(true)
 include("mps_aux.jl")
 
@@ -8,15 +8,24 @@ let
   config_path = joinpath("kd_tree_approach","config.json")
   p = load_constants(config_path)
 
-  f = h5open("kd_tree_approach/states/0_0_state.h5", "r")
-  ψ₁ = read(f, "Psi", MPS)
+  # f = h5open("kd_tree_approach/states/0_0_state.h5", "r")
+  # ψ₁ = read(f, "psi", MPS)
+  # close(f)
+  # normalize!(ψ₁)
+
+  f = h5open("kd_tree_approach/states/state8.h5", "r")
+  ψ₁ = read(f, "psi", MPS)  
   close(f)
-  ψ₂ = conj.(ψ₁)
+
+  new_sites = siteinds("S=1/2", length(ψ₁))   
+  for i in eachindex(ψ₁)
+    ψ₁[i] = replaceind(ψ₁[i], siteinds(ψ₁)[i] => new_sites[i])  # Replace site indices
+  end
 
   lattice = build_lattice(p["Lx"], p["Ly"], "rectangular")
 
-  c = 0
-  Ψ = c * ψ₂ + sqrt(1 - c^2) * ψ₁
+  c = 1
+  Ψ = c * ψ₁ + sqrt(1 - c^2) * conj.(ψ₁)
 
   Mx = expect(Ψ, "Sx")
   My = expect(Ψ, "Sy")

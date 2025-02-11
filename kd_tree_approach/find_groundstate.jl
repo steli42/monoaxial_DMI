@@ -168,7 +168,6 @@ let
         obs = DMRGObserver(; energy_tol = p["E_tol"], minsweeps = 10)
         # E, ψ = dmrg(H, ψ₀; nsweeps = p["sweeps"], maxdim = p["M"], cutoff = p["cutoff_tol"], observer = obs, outputlevel = p["oplvl"])
         # E, ψ = dmrg1(H, ψ₀, sweeps, observer = obs, outputlevel = p["oplvl"])
-
         E, ψ = dmrg_x(H, ψ₀; nsweeps = p["sweeps"], maxdim = M, cutoff = p["cutoff_tol"], outputlevel = p["oplvl"])
         # E, ψ = my_dmrg_x(H, ψ₀, nsweeps = p["sweeps"], maxdim = M, outputlevel = p["oplvl"])
         normalize!(ψ)
@@ -211,7 +210,7 @@ let
         # Save MPS
         file_path = joinpath(states_dir, "$(formatted_alpha)_state.h5")
         psi_file = h5open(file_path, "w")
-        write(psi_file, "Psi", ψ)
+        write(psi_file, "psi", ψ)
         close(psi_file)
 
         # push!(Energies, (α, real(E), real(E_c), real(σ), real(σ_c))) 

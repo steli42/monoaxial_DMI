@@ -248,10 +248,13 @@ let
   p = load_constants(config_path)
 
   input_dir = joinpath("kd_tree_approach", "states")
-  f = h5open(joinpath(input_dir, "0_0_state.h5"), "r")
-  ψ₁ = read(f, "Psi", MPS)
+  f = h5open(joinpath(input_dir, "state16.h5"), "r")
+  ψ₁ = read(f, "psi", MPS)
   close(f)
-  ψ₂ = conj.(ψ₁)
+  new_sites = siteinds("S=1/2", length(ψ₁))   
+  for i in eachindex(ψ₁)
+    ψ₁[i] = replaceind(ψ₁[i], siteinds(ψ₁)[i] => new_sites[i])  # Replace site indices
+  end
 
   Lx, Ly = p["Lx"], p["Ly"]
   lattice = build_lattice(Lx, Ly, "rectangular")
@@ -270,14 +273,14 @@ let
     ("Sy", "Sx", "G_{yx}"), ("Sy", "Sy", "G_{yy}"), ("Sy", "Sz", "G_{yz}"),
     ("Sz", "Sx", "G_{zx}"), ("Sz", "Sy", "G_{zy}"), ("Sz", "Sz", "G_{zz}")]
 
-  @time for c in [0.0] #[0.0, 1/sqrt(2), 1.0] 
+  @time for c in [0.0, 1/sqrt(2), 1.0] 
     formatted_c = replace(string(round(c, digits=3)), "." => "_")
     output_dir = joinpath("corr_data", "out_corr", "out_$(formatted_c)")
     if !isdir(output_dir)
       mkpath(output_dir)
     end
 
-    Ψ = c * ψ₂ + sqrt(1 - c^2) * ψ₁  # we fix the phase to be ϕ = 0
+    Ψ = c * ψ₁ + sqrt(1 - c^2) * conj.(ψ₁)  # we fix the phase to be ϕ = 0
 
     if ferromagnetic == true
       sites = siteinds(Ψ)
@@ -285,31 +288,31 @@ let
       Ψ = normalize(Ψ)
     end
 
-    # for (op1, op2, plot_title) in elements
-    #   println("Calculating structure factor $plot_title ...")
-    #   qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm = calculate_structureFactor(lattice, Ψ, q_max, q_step, op1, op2)
+    for (op1, op2, plot_title) in elements
+      println("Calculating structure factor $plot_title ...")
+      qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm = calculate_structureFactor(lattice, Ψ, q_max, q_step, op1, op2)
 
-    #   # Save data to CSV files
-    #   csv_filename = joinpath(output_dir, "$(plot_title).csv")
-    #   open(csv_filename, "w") do file
-    #     writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values_real), vec(S_values_imag), vec(S_values_norm)), ',')
-    #   end
+      # Save data to CSV files
+      csv_filename = joinpath(output_dir, "$(plot_title).csv")
+      open(csv_filename, "w") do file
+        writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(S_values_real), vec(S_values_imag), vec(S_values_norm)), ',')
+      end
 
-    #   println("Data for $plot_title saved to $csv_filename")
-    # end
+      println("Data for $plot_title saved to $csv_filename")
+    end
 
-    # for (op1, op2, plot_title) in elements_class
-    #   println("Calculating gamma factor $plot_title ...")
-    #   qx_mesh, qy_mesh, s_values_real, s_values_imag, s_values_norm = calculate_classical_structureFactor(lattice, Ψ, q_max, q_step, op1, op2, ferromagnetic)
+    for (op1, op2, plot_title) in elements_class
+      println("Calculating gamma factor $plot_title ...")
+      qx_mesh, qy_mesh, s_values_real, s_values_imag, s_values_norm = calculate_classical_structureFactor(lattice, Ψ, q_max, q_step, op1, op2, ferromagnetic)
 
-    #   # Save data to CSV files
-    #   csv_filename = joinpath(output_dir, "$(plot_title).csv")
-    #   open(csv_filename, "w") do file
-    #     writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(s_values_real), vec(s_values_imag), vec(s_values_norm)), ',')
-    #   end
+      # Save data to CSV files
+      csv_filename = joinpath(output_dir, "$(plot_title).csv")
+      open(csv_filename, "w") do file
+        writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(s_values_real), vec(s_values_imag), vec(s_values_norm)), ',')
+      end
 
-    #   println("Data for $plot_title saved to $csv_filename")
-    # end
+      println("Data for $plot_title saved to $csv_filename")
+    end
 
   end
 
