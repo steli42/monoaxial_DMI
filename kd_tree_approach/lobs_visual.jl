@@ -3,6 +3,8 @@ using CSV, DataFrames
 pygui(true)
 include("mps_aux.jl")
 
+ITensors.op(::OpName"Id", ::SiteType"S=1/2") = [1 0; 0 1]
+
 function reduced_density_matrix(psi::MPS, j::Int64)
 
   orthogonalize!(psi, j)
