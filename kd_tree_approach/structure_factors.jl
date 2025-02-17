@@ -244,6 +244,7 @@ end
 let
 
   base_dir = "kd_tree_approach"
+  target_dir = joinpath("data_corr", "out_corr")
   config_path = joinpath("kd_tree_approach","config.json")
   p = load_constants(config_path)
 
@@ -275,10 +276,8 @@ let
 
   @time for c in [0.0, 1/sqrt(2), 1.0] 
     formatted_c = replace(string(round(c, digits=3)), "." => "_")
-    output_dir = joinpath("corr_data", "out_corr", "out_$(formatted_c)")
-    if !isdir(output_dir)
-      mkpath(output_dir)
-    end
+    output_dir = joinpath(target_dir, "out_$(formatted_c)")
+    mkpath(output_dir)
 
     Ψ = c * ψ₁ + sqrt(1 - c^2) * conj.(ψ₁)  # we fix the phase to be ϕ = 0
 
@@ -305,7 +304,6 @@ let
       println("Calculating gamma factor $plot_title ...")
       qx_mesh, qy_mesh, s_values_real, s_values_imag, s_values_norm = calculate_classical_structureFactor(lattice, Ψ, q_max, q_step, op1, op2, ferromagnetic)
 
-      # Save data to CSV files
       csv_filename = joinpath(output_dir, "$(plot_title).csv")
       open(csv_filename, "w") do file
         writedlm(file, hcat(vec(qx_mesh), vec(qy_mesh), vec(s_values_real), vec(s_values_imag), vec(s_values_norm)), ',')

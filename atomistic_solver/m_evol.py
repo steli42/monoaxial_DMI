@@ -4,6 +4,7 @@ from tqdm import tqdm  # for the progress bars
 import os
 import glob
 
+
 def plot_magnetization_2D(snapshot_dir, lattice, m, snapshot_id, Lx, Ly):
     """
     Function to plot a 2D magnetization snapshot.
@@ -17,30 +18,39 @@ def plot_magnetization_2D(snapshot_dir, lattice, m, snapshot_id, Lx, Ly):
     """
     m = m.reshape((-1, 3))
 
-    fig, ax = plt.subplots(figsize=(2,2))
-    ax.set_aspect('equal')
-    ax.axis('off')  # Turn off axis labels and ticks
+    fig, ax = plt.subplots(figsize=(2, 2))
+    ax.set_aspect("equal")
+    ax.axis("off")  # Turn off axis labels and ticks
 
     cmap = plt.cm.RdBu_r
 
     # map mz values to interval [0, 1]
-    mz_normalized = (m[:,2] + 1) / 2
+    mz_normalized = (m[:, 2] + 1) / 2
     z_color = mz_normalized.reshape(Lx, Ly)
 
-    X,Y = lattice[:,0].reshape(Lx, Ly),lattice[:,1].reshape(Lx, Ly)
+    X, Y = lattice[:, 0].reshape(Lx, Ly), lattice[:, 1].reshape(Lx, Ly)
     ax.pcolormesh(X, Y, z_color, cmap=cmap)
 
-    ax.quiver(X, Y, m[:,0].reshape(Lx, Ly), m[:,1].reshape(Lx, Ly), 
-                angles='xy', scale_units='xy', scale=1, color='white', pivot='middle', width=0.0025)
-
+    ax.quiver(
+        X,
+        Y,
+        m[:, 0].reshape(Lx, Ly),
+        m[:, 1].reshape(Lx, Ly),
+        angles="xy",
+        scale_units="xy",
+        scale=1,
+        color="white",
+        pivot="middle",
+        width=0.0025,
+    )
 
     plt.tight_layout()
     plt.savefig(os.path.join(snapshot_dir, f"shot_{snapshot_id}.png"), dpi=300)
     plt.close(fig)
 
 
-if __name__ == "__main__": 
-    
+if __name__ == "__main__":
+
     file = "atomistic_solver/m_evol.h5"
     # file = "atomistic_solver/m_relaxation.h5"
 
@@ -51,23 +61,17 @@ if __name__ == "__main__":
         Lx = int(h5file["Lx"][()])
         Ly = int(h5file["Ly"][()])
 
-    
     snapshot_dir = os.path.join("atomistic_solver", "snapshots")
     os.makedirs(snapshot_dir, exist_ok=True)
 
-
     for file in glob.glob(os.path.join(snapshot_dir, "*.png")):
         os.remove(file)
-    
-    
+
     incr = 100
-    id = 1 
+    id = 1
     for i in tqdm(range(0, P, incr), desc="Generating snapshots"):
         plot_magnetization_2D(snapshot_dir, lattice, m_evol[i], id, Lx, Ly)
         id += 1
 
 
-
 # ffmpeg -framerate 64 -i snapshots/shot_%d.png -c:v libx264 -pix_fmt yuv420p movie.mp4
-
-

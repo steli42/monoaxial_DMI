@@ -3,9 +3,6 @@ using HDF5, Printf, JSON
 import ITensorMPS: dmrg_x
 import ITensorMPS.promote_itensor_eltype, ITensorMPS._op_prod
 
-# using PyPlot
-# pygui(true)
-
 include("projmpo1.jl")
 include("dmrg1.jl")
 include("mps_aux.jl")
@@ -230,35 +227,6 @@ let
     #   end
     # close(E_file)
   
-    # # Create a figure and a 1x2 grid of subplots
-    # fig, axs = plt.subplots(1, 2, figsize=(20, 8))  # 1 row, 2 columns of subplots
-  
-    # # First subplot: alphas vs E_orig and E_conjug
-    # axs[1].scatter(alphas, E_orig, color="none", marker="o", edgecolor="blue", label=L"$E_{\psi_0}$")
-    # axs[1].scatter(alphas, E_conjug, color="red", marker="x", label=L"$E_{\text{conj}(\psi_0)}$")
-    # axs[1].set_xlabel(L"$D_x/D_y = \alpha$")
-    # axs[1].set_ylabel("Energy of state")
-    # axs[1].legend()
-  
-    # # Second subplot: alphas vs abs(E_orig - E_conjug) on a log scale
-    # axs[2].scatter(alphas, abs.(E_orig - E_conjug), color="none", marker="o", edgecolor="green", label=L"$|E_{\psi_0} - E_{\text{conj}(\psi_0)}|$")
-    # axs[2].set_yscale("log")
-    # axs[2].set_xlabel(L"$D_x/D_y = \alpha$")
-    # axs[2].set_ylabel("Log of Absolute Energy Difference")
-    # axs[2].legend()
-    # # Adjust layout
-    # plt.tight_layout()
-    # plt.savefig("Energies.pdf")
-  
-    # plt.clf()
-    # plt.figure()
-    # plt.scatter(alphas, Sigma_orig, color="none", marker="o", edgecolor="blue", label=L"$\sigma^2_{\psi_0}$")
-    # plt.scatter(alphas, Sigma_conjug, color="red", marker="x", label=L"$\sigma^2_{\text{conj}(\psi_0)}$")
-    # plt.ylabel(L"$\langle E^2 \rangle - \langle E \rangle ^2$")
-    # plt.legend()
-    # plt.xlabel(L"$D_x/D_y = \alpha$")
-    # plt.savefig("Variances.pdf")
-
     return
 end
 
