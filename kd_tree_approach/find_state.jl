@@ -97,8 +97,8 @@ end
 
 let
 
-    base_dir = "kd_tree_approach"
-    config_path = joinpath("kd_tree_approach","config.json")
+    base_dir = "."
+    config_path = joinpath(".","config.json")
     states_dir = joinpath(base_dir,"states")
     mag_dir = joinpath(states_dir, "magnetisations")
 
@@ -147,7 +147,7 @@ let
 
     M = p["bonddim"]
     ψ₀, sites = construct_PS(p["initial_PS"], lattice_Q, D, αₘ, p["wall"], p["radius"], p["eccentricity"])
-    for α in [0.0] # α_values_pos 
+    for α in [1.0] # α_values_pos 
 
         H = build_hamiltonian(sites, lattice_Q, lattice_C, nn_idxs_QQ, nn_idxs_QC, θϕ, B_amp, J, D, α, p["alpha_axis"])
 
