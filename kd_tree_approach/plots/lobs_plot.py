@@ -1,8 +1,13 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import os
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+from matplotlib.ticker import MaxNLocator
 
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["text.latex.preamble"] = r"\usepackage{bm} \usepackage{amsmath}"
 
 def color_fun(H):
     result = 0
@@ -38,102 +43,119 @@ def hsv2rgb(n, in_v, in_h):
     return rgb
 
 
+def plot_entropy_fidelity(X, Y, MX, MY, s_grid, Delta_grid, norm_grid, hue, save_path):
+    fig, axes = plt.subplots(1, 3, constrained_layout=True)
+    data_grids = [s_grid, Delta_grid, norm_grid]
+    color_labels = [
+        r"$-\mathrm{Tr}\left(\hat\rho_i\ln\hat\rho_i\right)$",
+        r"$\mathrm{Tr}(\hat\rho_i \hat P_i)$",
+        r"$\vert \bm{m}_i \vert$"
+    ]
+
+    for i, (ax, data) in enumerate(
+        zip(axes, data_grids)
+    ):
+        
+        if i < 2:
+            arw_clr = "whitesmoke"
+            cmap = "turbo"
+        else:
+            arw_clr = hue
+            cmap = plt.cm.grey
+            cmap = mcolors.ListedColormap(cmap(np.linspace(0.3,1,256)))  #lower bound can be editted for cmaps that go only to gray and not to black
+            
+        ax.set_aspect("equal")
+        c = ax.pcolormesh(X, Y, data, cmap=cmap, shading="auto")
+        ax.quiver(
+            X,
+            Y,
+            MX,
+            MY,
+            angles="xy",
+            scale_units="xy",
+            scale=0.5,
+            color=arw_clr,
+            pivot="middle",
+            width=0.0045,
+        )
+        cbar = plt.colorbar(
+            c,
+            ax=ax,
+            orientation="horizontal",
+            location="top",
+            pad=0.005,
+            aspect=45,
+            shrink=1.0,
+        )
+        # cbar.set_label(label)
+        cbar.locator = MaxNLocator(integer=True, prune="both", nbins=5)
+        cbar.update_ticks()
+        ax.set_xlabel(r"$x/a$")
+        ax.set_xticklabels([])
+        if i == 0:
+            ax.set_ylabel(r"$y/a$")
+        elif i != 0:
+            ax.set_yticklabels([])
+        ax.xaxis.set_major_locator(
+            MaxNLocator(nbins=5)
+        )  
+        ax.yaxis.set_major_locator(
+            MaxNLocator(nbins=5)
+        )  
+        ax.tick_params(axis="y", which="both", right=True)
+    plt.savefig(save_path, dpi=600, bbox_inches="tight")
+
+
+prefac = "sk"
 data_dir = os.path.join("..", "data_lobs")
-df = pd.read_csv(os.path.join(data_dir, "lobs.csv"))
+df = pd.read_csv(os.path.join(data_dir, "lobs_"+prefac+".csv"))
 
 x, y = df["x"].values, df["y"].values
 mx, my, mz = df["Mx"].values, df["My"].values, df["Mz"].values
 s, Delta = df["s"].values, df["Delta"].values
+norm = np.sqrt(mx**2 + my**2 + mz**2)
 
-Lx, Ly = len(np.unique(x)), len(np.unique(y))
-X, Y = x.reshape(Lx, Ly), y.reshape(Lx, Ly)
-MX, MY, MZ = mx.reshape(Lx, Ly), my.reshape(Lx, Ly), mz.reshape(Lx, Ly)
-s_grid, Delta_grid = s.reshape(Lx, Ly), Delta.reshape(Lx, Ly)
+masking = True
+max_x = 10
+max_y = 7
 
-hue = np.zeros((len(mx), 3))
-for i in range(len(mx)):
-    vector = np.array([mx[i], my[i], mz[i]])
-    norm = np.linalg.norm(vector)
-    hue[i] = hsv2rgb(vector / norm, 1, 0)
+if masking != True:
+    Lx, Ly = len(np.unique(x)), len(np.unique(y))
+    X, Y = x.reshape(Lx, Ly), y.reshape(Lx, Ly)
+    MX, MY, MZ = mx.reshape(Lx, Ly), my.reshape(Lx, Ly), mz.reshape(Lx, Ly)
+    s_grid, Delta_grid = s.reshape(Lx, Ly), Delta.reshape(Lx, Ly)
+    norm_grid = norm.reshape(Lx, Ly)    
+elif masking == True:
+    
+    x_range = (-max_x, max_x)
+    y_range = (-max_y, max_y)
 
-mz_normalized = (mz + 1) / 2
-z_color = mz_normalized.reshape(Lx, Ly)
+    mask = (x >= x_range[0]) & (x <= x_range[1]) & (y >= y_range[0]) & (y <= y_range[1])
 
-norm_code = np.sqrt(mx**2 + my**2 + mz**2)
-norm_code = norm_code.reshape(Lx, Ly)
+    x = x[mask]
+    y = y[mask]
+    mx = mx[mask]
+    my = my[mask]
+    mz = mz[mask]
+    s = s[mask]
+    Delta = Delta[mask]
+    norm = norm[mask]
 
-fig, ax = plt.subplots()
-ax.set_aspect("equal")
-ax.pcolormesh(X, Y, norm_code, cmap="gray")  # ocean #bone #gray work
+    Lx, Ly = 2 * max_x + 1, 2 * max_y + 1
+    X, Y = x.reshape(Lx, Ly), y.reshape(Lx, Ly)
+    MX, MY, MZ = mx.reshape(Lx, Ly), my.reshape(Lx, Ly), mz.reshape(Lx, Ly)
+    s_grid, Delta_grid = s.reshape(Lx, Ly), Delta.reshape(Lx, Ly)
+    norm_grid = norm.reshape(Lx, Ly)   
+    
+    hue = np.zeros((len(mx), 3))
+    for i in range(len(mx)):
+        vector = np.array([mx[i], my[i], mz[i]])
+        mod = np.linalg.norm(vector)
+        hue[i] = hsv2rgb(vector / mod, 1, 0) 
 
-ax.quiver(
-    X,
-    Y,
-    MX,
-    MY,
-    angles="xy",
-    scale_units="xy",
-    scale=0.5,
-    color=hue,
-    pivot="middle",
-    width=0.0045,
+# Generate the plot
+plot_entropy_fidelity(
+    X, Y, MX, MY, s_grid, Delta_grid, norm_grid, hue, os.path.join(data_dir, "combined_plot_"+prefac+".png")
 )
 
-ax.set_xlabel("x")
-ax.set_ylabel("y")
-plt.savefig(os.path.join(data_dir, "magnetization.png"), dpi=600)
 
-fig, ax = plt.subplots()
-ax.set_aspect("equal")
-c = ax.pcolormesh(X, Y, s_grid, cmap="turbo", shading="auto")
-ax.quiver(
-    X,
-    Y,
-    MX,
-    MY,
-    angles="xy",
-    scale_units="xy",
-    scale=0.5,
-    color="white",
-    pivot="middle",
-    width=0.0025,
-)
-# plt.colorbar(c, ax = ax, label="s")
-cbar = plt.colorbar(
-    c,
-    ax=ax,
-    label="entropy",
-    orientation="horizontal",
-    location="top",
-    pad=0.01,
-    aspect=75,
-)
-fig.tight_layout()
-plt.savefig(os.path.join(data_dir, "entropy.png"), dpi=600)
-
-fig, ax = plt.subplots()
-ax.set_aspect("equal")
-c = ax.pcolormesh(X, Y, Delta_grid, cmap="plasma_r", shading="auto")
-ax.quiver(
-    X,
-    Y,
-    MX,
-    MY,
-    angles="xy",
-    scale_units="xy",
-    scale=0.5,
-    color="white",
-    pivot="middle",
-    width=0.0045,
-)
-cbar = plt.colorbar(
-    c,
-    ax=ax,
-    label="Delta",
-    orientation="horizontal",
-    location="top",
-    pad=0.01,
-    aspect=75,
-)
-fig.tight_layout()
-plt.savefig(os.path.join(data_dir, "fidelity.png"), dpi=600)
