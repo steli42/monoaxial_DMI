@@ -1,6 +1,6 @@
 import ITensorMPS.AbstractMPS
 import ITensorMPS.check_hascommoninds
-import ITensors.orthocenter
+# import ITensors.orthocenter
 import ITensorMPS.eigsolve
 include("projmpo1.jl")
 """
@@ -57,6 +57,32 @@ function dmrg1(H::MPO, psi0::MPS, sweeps::Sweeps; kwargs...)
     # H = permute(H, (linkind, siteinds, linkind))
     PH = ProjMPO1(H)
     return dmrg1(PH, psi0, sweeps; kwargs...)
+end
+
+function meminfo_procfs(pid=getpid())
+    smaps = "/proc/$pid/smaps_rollup"
+    if !isfile(smaps)
+        error("`$smaps` not found. Maybe you are using an OS without procfs support or with an old kernel.")
+    end
+
+    rss = pss = shared = private = 0
+    for line in eachline(smaps)
+        s = split(line)
+        if s[1] == "Rss:"
+            rss += parse(Int64, s[2])
+        elseif s[1] == "Pss:"
+            pss += parse(Int64, s[2])
+        elseif s[1] == "Shared_Clean:" || s[1] == "Shared_Dirty:"
+            shared += parse(Int64, s[2])
+        elseif s[1] == "Private_Clean:" || s[1] == "Private_Dirty:"
+            private += parse(Int64, s[2])
+        end
+    end
+
+    @printf "RSS:       %9.3f GiB\n" rss / 2^10 / 10^3
+    @printf "┝ shared:  %9.3f GiB\n" shared / 2^10 / 10^3
+    @printf "┕ private: %9.3f GiB\n" private / 2^10 / 10^3
+    @printf "PSS:       %9.3f GiB\n" pss / 2^10 / 10^3
 end
 
 """
@@ -223,7 +249,6 @@ function dmrg1(PH, psi0::MPS, sweeps::Sweeps; kwargs...)
     eigsolve_krylovdim::Int = get(kwargs, :eigsolve_krylovdim, 3)
     eigsolve_maxiter::Int = get(kwargs, :eigsolve_maxiter, 1)
     eigsolve_verbosity::Int = get(kwargs, :eigsolve_verbosity, 0)
-
     ishermitian::Bool = get(kwargs, :ishermitian, true)
 
     # TODO: add support for targeting other states with DMRG
@@ -267,6 +292,15 @@ function dmrg1(PH, psi0::MPS, sweeps::Sweeps; kwargs...)
 
     for sw in 1:nsweep(sweeps)
         sw_time = @elapsed begin
+
+            if outputlevel > 0
+                try 
+                    meminfo_procfs()
+                catch e
+                    println("No memory info available")
+                end
+            end
+
             maxtruncerr = 0.0
 
             if !isnothing(write_when_maxdim_exceeds) &&
@@ -287,7 +321,7 @@ function dmrg1(PH, psi0::MPS, sweeps::Sweeps; kwargs...)
                 end
 
                 @timeit_debug timer "dmrg: position!" begin
-                    position!(PH, psi, ha==1 ? b : b+1)
+                    position!(PH, psi, ha == 1 ? b : b + 1)
                 end
 
                 @debug_check begin
@@ -296,7 +330,7 @@ function dmrg1(PH, psi0::MPS, sweeps::Sweeps; kwargs...)
                 end
 
                 @timeit_debug timer "dmrg: psi[b]*psi[b+1]" begin
-                    phi = ha==1 ? psi[b] : psi[b+1]
+                    phi = ha == 1 ? psi[b] : psi[b+1]
                 end
 
                 # energy = real(inner(psi', PH.H, psi))
@@ -333,7 +367,7 @@ function dmrg1(PH, psi0::MPS, sweeps::Sweeps; kwargs...)
                     end
                 end
 
-                phi = ha==1 ? phi * psi[b+1] : psi[b] * phi
+                phi = ha == 1 ? phi * psi[b+1] : psi[b] * phi
 
                 @debug_check begin
                     checkflux(phi)
@@ -394,7 +428,7 @@ function dmrg1(PH, psi0::MPS, sweeps::Sweeps; kwargs...)
                 "After sweep %d energy=%s energy/site=%s maxlinkdim=%d maxerr=%.2E time=%.3f\n",
                 sw,
                 real(energy),
-                real(energy)/length(psi),
+                real(energy) / length(psi),
                 maxlinkdim(psi),
                 maxtruncerr,
                 sw_time

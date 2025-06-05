@@ -24,9 +24,14 @@ end
 
 let
 
+  c = 1.0
+  if length(ARGS) > 0
+    c = eval(Meta.parse(ARGS[1]))  #this parses string ARGS like "1/sqrt(2)" and interpretes them to .707
+  end
+
   base_dir = "."
   target_dir = "data_lobs"
-  mkpath(joinpath("..",target_dir))
+  mkpath(joinpath("..", target_dir))
   config_path = joinpath(base_dir, "config.json")
   p = load_constants(config_path)
 
@@ -36,13 +41,11 @@ let
 
   new_sites = siteinds("S=1/2", length(ψ))
   for i in eachindex(ψ)
-    ψ[i] = replaceind(ψ[i], siteinds(ψ)[i] => new_sites[i])  # Replace site indices
+    ψ[i] = replaceind(ψ[i], siteinds(ψ)[i] => new_sites[i])  
   end
 
   Lx, Ly = p["Lx"], p["Ly"]
   lattice = build_lattice(Lx, Ly, "rectangular")
-
-  c = 1/sqrt(2)
   ψ = c * ψ + sqrt(1 - c^2) * conj.(ψ)
 
   Mx, My, Mz, s, Δ = (zeros(length(siteinds(ψ))) for _ in 1:5)
@@ -68,49 +71,33 @@ let
   end
 
   data = DataFrame(
-      x = lattice[1, :], 
-      y = lattice[2, :], 
-      Mx = Mx, 
-      My = My, 
-      Mz = Mz, 
-      s = s, 
-      Delta = Δ
+    x=lattice[1, :],
+    y=lattice[2, :],
+    Mx=Mx,
+    My=My,
+    Mz=Mz,
+    s=s,
+    Delta=Δ
   )
   CSV.write(joinpath("..", target_dir, "lobs.csv"), data)
   println("Data saved to lobs.csv")
 
 
-  # fig = plt.figure()
-  # ax = fig.add_subplot(projection="3d")
+  fig = plt.figure()
+  ax = fig.add_subplot(projection="3d")
 
-  # for j in axes(lattice,2)
-  #   r = [lattice[1, j], lattice[2, j]]
-  #   cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r")
-  #   vmin = minimum(Mz)
-  #   vmax = maximum(Mz)
-  #   norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
-  #   ax.quiver(r[1], r[2], 0.0, Mx[j], My[j], Mz[j], normalize=true, color=cmap(norm(Mz[j])))
-  # end
-  # plt.xlabel("x")
-  # plt.ylabel("y")
-  # ax.set_aspect("equal")
-  # plt.show()
-
-  # X = reshape(lattice[1, :], Ly, Lx)
-  # Y = reshape(lattice[2, :], Ly, Lx)
-
-  # cmap = "turbo"
-  # plt.figure()
-  # plt.gca().set_aspect("equal")
-  # plt.pcolormesh(X, Y, reshape(s, Ly, Lx), cmap=cmap)
-  # plt.colorbar()
-  # plt.show()
-
-  # plt.figure()
-  # plt.gca().set_aspect("equal")
-  # plt.pcolormesh(X, Y, reshape(Δ, Ly, Lx), cmap=cmap)
-  # plt.colorbar()
-  # plt.show()
+  for j in axes(lattice, 2)
+    r = [lattice[1, j], lattice[2, j]]
+    cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r")
+    vmin = minimum(Mz)
+    vmax = maximum(Mz)
+    norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+    ax.quiver(r[1], r[2], 0.0, Mx[j], My[j], Mz[j], normalize=true, color=cmap(norm(Mz[j])))
+  end
+  plt.xlabel("x")
+  plt.ylabel("y")
+  ax.set_aspect("equal")
+  plt.show()
 
   return
 end
