@@ -132,10 +132,6 @@ function write_mag_to_csv(file_path::String, lattice_Q::Array{Float64,2},
     end
 end
 
-function load_constants(path::String)
-    return JSON.parsefile(path)
-end
-
 # The following two need to be merged at some point
 function calculate_topological_charge(Mx::Vector{Float64}, My::Vector{Float64}, Mz::Vector{Float64},
     lattice_Q::Array{Float64,2}, Lx::Int64, Ly::Int64)

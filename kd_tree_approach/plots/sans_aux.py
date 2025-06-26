@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from scipy.integrate import simpson
+from matplotlib.ticker import MaxNLocator
 
 
 def read_csv_data(file_path, data_type):
@@ -208,18 +209,46 @@ def plot_differential_cross_section(
         if vmax is None:
             vmax = np.max(sigma)
 
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(4.4, 4.4))
     c = plt.pcolor(qx, qy, sigma_log, shading="auto", cmap=cmap, vmin=vmin, vmax=vmax)
-    plt.colorbar(c, label=r"$\log(\sigma)$" if log_scale else r"$\sigma(q)$")
+    cbar = plt.colorbar(
+        c,
+        orientation="horizontal",
+        location="top",
+        pad=0.0075,
+        aspect=45,
+        shrink=1.0,
+    )
+    cbar.locator = MaxNLocator(integer=True, prune="both", nbins=5)
+    cbar.set_label(r"$\frac{d\Sigma_{\rm sf}}{d\Omega}$", fontsize=14)
+    ax = plt.gca()
+    
     plt.xlim([qx_min, qx_max])
     plt.ylim([qx_min, qx_max])
-    plt.xlabel(r"$q_{x} \, a $")
-    plt.ylabel(r"$q_{y} \, a $")
-    if polarised == False:
-        plt.title(r"Unpolarised Differential Cross Section $\sigma(\mathbf{q})$")
-    else:
-        plt.title(r"Polarised Differential Cross Section $\sigma(\mathbf{q})$")
-    plt.savefig(output_image, dpi=600)
+    plt.xlabel(r"$q_{x} \, a $", fontsize=14)
+    plt.ylabel(r"$q_{y} \, a $", fontsize=14)
+    
+    ax.text(
+        0.02,
+        0.98,
+        r"$(b)$",
+        transform=ax.transAxes,
+        fontsize=14,
+        fontweight="bold",
+        color="white",
+        ha="left",
+        va="top",
+        )
+    
+    ax.set_xticks([-1, 0, 1])
+    ax.set_xticklabels([r"$-1$", r"$0$", r"$1$"])
+    ax.set_yticks([-1, 0, 1])
+    ax.set_yticklabels([r"$-1$", r"$0$", r"$1$"])
+    
+    plt.xlabel(r"$q_{x} \, a $", fontsize=14)
+    # plt.ylabel(r"$q_{y} \, a $", fontsize=14)
+    
+    plt.savefig(output_image, dpi=600, bbox_inches="tight")
     plt.close()
 
 
@@ -230,6 +259,7 @@ def plot_connected_cross_section(
     qx_max,
     S_elements1,
     S_elements2,
+    labels,
     polarised,
     cmap="plasma",
     vmin=None,
@@ -262,20 +292,58 @@ def plot_connected_cross_section(
         if vmax is None:
             vmax = np.max(sigma)
 
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(3.25/3, 3.25/3))
     c = plt.pcolor(qx, qy, sigma_log, shading="auto", cmap=cmap, vmin=vmin, vmax=vmax)
     plt.colorbar(
-        c, label=r"$\log(\sigma_Q-\sigma_C)$" if log_scale else r"$\sigma_Q-\sigma_C$"
+        c,
+        orientation="horizontal",
+        location="top",
+        pad=0.0075,
+        aspect=25,
+        shrink=1.0,
     )
+    c.locator = MaxNLocator(integer=True, prune="both", nbins=4)
+    
+    ax = plt.gca()
+    plt.tick_params(axis="y", which="both", right=True)
+    
     plt.xlim([qx_min, qx_max])
     plt.ylim([qx_min, qx_max])
-    plt.xlabel(r"$q_{x} \, a $")
-    plt.ylabel(r"$q_{y} \, a $")
-    if polarised == False:
-        plt.title(r"Unpolarised Connected Cross Section $\sigma(\mathbf{q})$")
-    else:
-        plt.title(r"Polarised Connected Cross Section $\sigma(\mathbf{q})$")
-    plt.savefig(output_image, dpi=600)
+    
+    ax.set_xticks([-1, 0, 1])
+    ax.set_xticklabels([r"$-1$", r"$0$", r"$1$"])
+    ax.set_yticks([-1, 0, 1])
+    # ax.set_yticklabels([r"$-1$", r"$0$", r"$1$"])
+    ax.set_yticklabels([])
+    
+    plt.xlabel(r"$q_{x} \, a $", fontsize=14)
+    # plt.ylabel(r"$q_{y} \, a $", fontsize=14)
+    
+    ax.text(
+        0.02,
+        0.98,
+        labels[0],
+        transform=ax.transAxes,
+        fontsize=14,
+        fontweight="bold",
+        color="white",
+        ha="left",
+        va="top",
+        )
+    
+    ax.text(
+        0.02,
+        0.02,
+        labels[1],
+        transform=ax.transAxes,
+        fontsize=14,
+        fontweight="bold",
+        color="white",
+        ha="left",
+        va="bottom",
+        )
+    
+    plt.savefig(output_image, dpi=600, bbox_inches='tight')
     plt.close()
 
 
@@ -373,3 +441,92 @@ def calculate_p(q_bin_centers, I_q, r_values):
         integrand = I_q * np.sin(q_bin_centers * r) * q_bin_centers
         p_values[idx] = r * simpson(integrand, x=q_bin_centers)
     return p_values
+
+
+def plot_structure_factors(
+    data_dir,
+    plot_titles,
+    output_image,
+    norm_const,
+    qx_min,
+    qx_max,
+    data_type="Re",
+    cmap="plasma",
+    vmin=None,
+    vmax=None,
+    log_scale=False,
+):  # we assume that the data forms a square grid so qy follows the same limits
+    fig = plt.figure(figsize=(10, 10))
+    gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0, hspace=0)
+
+    cmap = cmap
+
+    for i, title in enumerate(plot_titles):
+        csv_filename = os.path.join(data_dir, f"{title}.csv")
+        qx, qy, S_values = read_csv_data(csv_filename, data_type)
+
+        if data_type in ["Re", "Im"]:
+            S_values = normalize_S_values(S_values, norm_const)
+
+        if data_type == "Norm":
+            if log_scale:
+                S_values = np.where(
+                    S_values > 0, S_values, np.nan
+                )  # Replace non-positive values with NaN
+                S_values = np.log10(S_values)
+                cbar_label = r"$\log|S|$"
+            else:
+                cbar_label = r"$|S|$"
+        else:
+            if log_scale:
+                # Note: For 'Re' and 'Im', log scale is not typically used
+                S_values = np.where(S_values > 0, S_values, np.nan)
+                S_values = np.log10(S_values)
+                cbar_label = r"$\log($" + data_type + "$(S))$"
+            else:
+                cbar_label = data_type + r"${}(S)$"
+
+        ax = fig.add_subplot(gs[i // 3, i % 3])
+        c = ax.pcolor(qx, qy, S_values, shading="auto", cmap=cmap, vmin=vmin, vmax=vmax)
+
+        ax.text(
+            qx_min + 0.1,
+            qx_max - 0.1,
+            f"${title}$",
+            color="white",
+            fontsize=24,
+            ha="left",
+            va="top",
+        )
+
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlim([qx_min, qx_max])
+        ax.set_ylim([qx_min, qx_max])
+
+        if i >= 6:  # Only label the x-axis of the bottom row
+            ax.set_xlabel(r"$q_{x} \, a $", fontsize=20)
+        if i % 3 == 0:  # Only label the y-axis of the left column
+            ax.set_ylabel(r"$q_{y} \, a $", fontsize=20)
+
+    fig.subplots_adjust(
+        left=0.11, right=0.89, top=0.89, bottom=0.11
+    )  # Add margin around the grid (opposites must add up to 1)
+
+    # Create a common colorbar that spans the entire width of the figure
+    cbar_ax = fig.add_axes([0.11, 0.04, 0.775, 0.03])
+    cbar = fig.colorbar(c, cax=cbar_ax, orientation="horizontal", extend="max")
+    cbar.ax.tick_params(labelsize=18)
+    plt.text(
+        0.1,
+        0.04,
+        cbar_label,
+        rotation=0,
+        ha="right",
+        va="bottom",
+        fontsize=20,
+        transform=fig.transFigure,
+    )
+
+    plt.savefig(output_image, dpi=600)
+    plt.close(fig)
