@@ -169,6 +169,7 @@ launch_jobs/out
 *.json
 *.png
 *.pdf
+*.svg
 *.jpg
 *.DS_Store
 *.gif

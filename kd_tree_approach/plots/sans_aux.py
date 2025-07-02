@@ -30,8 +30,9 @@ def read_csv_data(file_path, data_type):
     return qx, qy, S_values
 
 
+# Normalize the S_values to the range [0, 1]
 def normalize_S_values(S_values, norm_const):
-    # Normalize the S_values to the range [0, 1]
+    
     min_val = np.min(S_values)
     max_val = np.max(S_values)
 
@@ -57,8 +58,6 @@ def plot_structure_factors(
 ):  # we assume that the data forms a square grid so qy follows the same limits
     fig = plt.figure(figsize=(10, 10))
     gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0, hspace=0)
-
-    cmap = cmap
 
     for i, title in enumerate(plot_titles):
         csv_filename = os.path.join(data_dir, f"{title}.csv")
@@ -185,7 +184,10 @@ def plot_differential_cross_section(
     qx_min,
     qx_max,
     S_elements,
-    polarised=False,
+    labels,
+    show_ylabel,
+    font=10,
+    polarised=True,
     cmap="plasma",
     vmin=None,
     vmax=None,
@@ -209,44 +211,62 @@ def plot_differential_cross_section(
         if vmax is None:
             vmax = np.max(sigma)
 
-    plt.figure(figsize=(4.4, 4.4))
+    
+    plt.figure(figsize=(3.375/3.1, 1.3))
+        
     c = plt.pcolor(qx, qy, sigma_log, shading="auto", cmap=cmap, vmin=vmin, vmax=vmax)
     cbar = plt.colorbar(
         c,
         orientation="horizontal",
         location="top",
         pad=0.0075,
-        aspect=45,
+        aspect=20,
         shrink=1.0,
     )
-    cbar.locator = MaxNLocator(integer=True, prune="both", nbins=5)
-    cbar.set_label(r"$\frac{d\Sigma_{\rm sf}}{d\Omega}$", fontsize=14)
+    cbar.locator = MaxNLocator(integer=True, prune="both", nbins=3)
+    
     ax = plt.gca()
+    plt.tick_params(axis="y", which="both", right=True)
     
     plt.xlim([qx_min, qx_max])
     plt.ylim([qx_min, qx_max])
-    plt.xlabel(r"$q_{x} \, a $", fontsize=14)
-    plt.ylabel(r"$q_{y} \, a $", fontsize=14)
+    
+    cbar.ax.tick_params(labelsize=font)
+    ax.set_xticks([-1, 0, 1])
+    ax.set_xticklabels([r"$-1$", r"$0$", r"$1$"], fontsize=font)
+    plt.xlabel(r"$q_{x} a $", fontsize=font)
+    
+    ax.set_yticks([-1, 0, 1])
+    if show_ylabel:
+        ax.set_yticklabels([r"$-1$", r"$0$", r"$1$"])
+        plt.ylabel(r"$q_{y} a $", fontsize=font)
+    else: 
+        ax.set_yticklabels([])
+    
     
     ax.text(
         0.02,
         0.98,
-        r"$(b)$",
+        labels[0],
         transform=ax.transAxes,
-        fontsize=14,
+        fontsize=font,
         fontweight="bold",
         color="white",
         ha="left",
         va="top",
         )
     
-    ax.set_xticks([-1, 0, 1])
-    ax.set_xticklabels([r"$-1$", r"$0$", r"$1$"])
-    ax.set_yticks([-1, 0, 1])
-    ax.set_yticklabels([r"$-1$", r"$0$", r"$1$"])
-    
-    plt.xlabel(r"$q_{x} \, a $", fontsize=14)
-    # plt.ylabel(r"$q_{y} \, a $", fontsize=14)
+    ax.text(
+        0.02,
+        0.02,
+        labels[1],
+        transform=ax.transAxes,
+        fontsize=font,
+        fontweight="bold",
+        color="white",
+        ha="left",
+        va="bottom",
+        )
     
     plt.savefig(output_image, dpi=600, bbox_inches="tight")
     plt.close()
@@ -260,7 +280,9 @@ def plot_connected_cross_section(
     S_elements1,
     S_elements2,
     labels,
-    polarised,
+    show_ylabel,
+    font=10,
+    polarised=True,
     cmap="plasma",
     vmin=None,
     vmax=None,
@@ -275,8 +297,12 @@ def plot_connected_cross_section(
     sigma = sigma1 - sigma2
 
     # use this cheat in the case of the annoying dot error
-    idx_x, idx_y = np.where((qx == 0) & (qy == 0))
-    sigma[idx_x, idx_y] = 1 / 2 * (sigma[idx_x - 1, idx_y] + sigma[idx_x, idx_y + 1])
+    idxs = np.argwhere((qx == 0) & (qy == 0))
+    for ix, iy in idxs:
+        v1 = sigma[ix-1, iy] if ix > 0 else sigma[ix+1, iy]
+        v2 = sigma[ix, iy+1] if iy+1 < sigma.shape[1] else sigma[ix, iy-1]
+        sigma[ix, iy] = 0.5 * (v1 + v2)
+
 
     if log_scale:
         sigma = np.where(sigma > 0, sigma, np.nan)
@@ -292,39 +318,44 @@ def plot_connected_cross_section(
         if vmax is None:
             vmax = np.max(sigma)
 
-    plt.figure(figsize=(3.25/3, 3.25/3))
+    plt.figure(figsize=(3.375/3.2, 1.3))
     c = plt.pcolor(qx, qy, sigma_log, shading="auto", cmap=cmap, vmin=vmin, vmax=vmax)
-    plt.colorbar(
+    cbar = plt.colorbar(
         c,
         orientation="horizontal",
         location="top",
         pad=0.0075,
-        aspect=25,
+        aspect=20,
         shrink=1.0,
     )
-    c.locator = MaxNLocator(integer=True, prune="both", nbins=4)
+    cbar.locator = MaxNLocator(integer=True, prune="both", nbins=3)
     
-    ax = plt.gca()
     plt.tick_params(axis="y", which="both", right=True)
     
     plt.xlim([qx_min, qx_max])
     plt.ylim([qx_min, qx_max])
     
-    ax.set_xticks([-1, 0, 1])
-    ax.set_xticklabels([r"$-1$", r"$0$", r"$1$"])
-    ax.set_yticks([-1, 0, 1])
-    # ax.set_yticklabels([r"$-1$", r"$0$", r"$1$"])
-    ax.set_yticklabels([])
+    ax = plt.gca()
+    cbar.ax.tick_params(labelsize=font)
     
-    plt.xlabel(r"$q_{x} \, a $", fontsize=14)
-    # plt.ylabel(r"$q_{y} \, a $", fontsize=14)
+    ax.set_xticks([-1, 0, 1])
+    ax.set_xticklabels([r"$-1$", r"$0$", r"$1$"], fontsize=font)
+    plt.xlabel(r"$q_{x} a $", fontsize=font)
+    
+    ax.set_yticks([-1, 0, 1])
+    if show_ylabel:
+        ax.set_yticklabels([r"$-1$", r"$0$", r"$1$"])
+        plt.ylabel(r"$q_{y} a $", fontsize=font)
+    else:
+        ax.set_yticklabels([])
+    
     
     ax.text(
         0.02,
         0.98,
         labels[0],
         transform=ax.transAxes,
-        fontsize=14,
+        fontsize=font,
         fontweight="bold",
         color="white",
         ha="left",
@@ -336,12 +367,13 @@ def plot_connected_cross_section(
         0.02,
         labels[1],
         transform=ax.transAxes,
-        fontsize=14,
+        fontsize=font,
         fontweight="bold",
         color="white",
         ha="left",
         va="bottom",
         )
+    
     
     plt.savefig(output_image, dpi=600, bbox_inches='tight')
     plt.close()

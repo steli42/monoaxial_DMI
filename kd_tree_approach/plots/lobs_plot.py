@@ -48,24 +48,24 @@ def plot_entropy_fidelity(X, Y, MX, MY, s_grid, Delta_grid, norm_grid, hue, save
 
     # gr = (1+np.sqrt(5))/2.0
     # dpi = 600
-    # w = gr*(3+3/8)*0.82
-    # h = (3+3/8)*0.82
-    # fig, ax = plt.subplots(1, 1, figsize=(w, h))
-    fig, axes = plt.subplots(1, 3, constrained_layout=True)
+    w = 3*(3+3/8)*0.5
+    h = (3+3/8)*0.5
+    fig, axes = plt.subplots(1, 3, figsize=(w, h))
+    # fig, axes = plt.subplots(1, 3, constrained_layout=True)
     data_grids = [s_grid, Delta_grid, norm_grid]
     labels = [
         r"$-\mathrm{Tr}\left(\hat\rho_i\ln\hat\rho_i\right)$",
         r"$\mathrm{Tr}(\hat\rho_i \hat P_i)$",
         r"$\vert \bm{m}_i \vert$",
     ]
-    subplot_labels = [r"$\rm (j)$", r"$\rm (k)$", r"$\rm (l)$"]
-    label_colors = ["white", "white", "black"]
+    subplot_labels = [r"$\rm (d)$", r"$\rm (k)$", r"$\rm (l)$"]
+    label_colors = ["black", "white", "black"]
 
     for i, (ax, data, label) in enumerate(zip(axes, data_grids, labels)):
 
         if i < 2:
-            arw_clr = "whitesmoke"
-            cmap = "turbo"
+            arw_clr = hue #"whitesmoke"
+            cmap = plt.cm.gray_r #"turbo" 
         else:
             arw_clr = hue
             cmap = plt.cm.grey
@@ -96,11 +96,12 @@ def plot_entropy_fidelity(X, Y, MX, MY, s_grid, Delta_grid, norm_grid, hue, save
             aspect=45,
             shrink=1.0,
         )
-        cbar.set_label(label)
-        cbar.locator = MaxNLocator(integer=True, prune="both", nbins=5)
+        # cbar.set_label(label, fontsize=10)
+        cbar.locator = MaxNLocator(integer=True, prune="both", nbins=3)
         cbar.update_ticks()
-        ax.set_xlabel(r"$x/a$")
-        ax.set_xticklabels([])
+        cbar.ax.tick_params(labelsize=10)
+        ax.set_xlabel(r"$x/a$", fontsize = 10)
+        # ax.set_xticklabels([])
         if i == 0:
             ax.set_ylabel(r"$y/a$")
         elif i != 0:
@@ -114,7 +115,7 @@ def plot_entropy_fidelity(X, Y, MX, MY, s_grid, Delta_grid, norm_grid, hue, save
             0.98,
             subplot_labels[i],
             transform=ax.transAxes,
-            fontsize=14,
+            fontsize=10,
             fontweight="bold",
             color=label_colors[i],
             ha="left",
@@ -180,5 +181,5 @@ plot_entropy_fidelity(
     Delta_grid,
     norm_grid,
     hue,
-    os.path.join(data_dir, "combined_plot_" + prefac + ".png"),
+    os.path.join(data_dir, "combined_plot_" + prefac + ".pdf"),
 )

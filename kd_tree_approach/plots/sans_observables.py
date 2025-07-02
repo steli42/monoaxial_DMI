@@ -14,8 +14,10 @@ from multiprocessing import Pool, cpu_count
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 
-def process_folder(data_dir):
+def process_folder(args):
 
+    data_dir, labels, show_ylabel = args 
+    
     config_dir = os.path.join(".", "config_local.json")
     with open(config_dir, "r") as file:
         p = json.load(file)
@@ -26,7 +28,7 @@ def process_folder(data_dir):
     qx_max = p["q_max"]
     qx_min = -qx_max
     color_map = "magma"  # "inferno" #"RdBu_r"
-    base = os.path.join("..", "data_corr", "out_corr1")
+    format = "jpg"
 
     plot_titles_Q = [
         "S_{xx}",
@@ -52,104 +54,63 @@ def process_folder(data_dir):
     ]
     
     # log_scale maps non-positive values to NaN and windows filled with NaN values will be left transparent
-    output_image = os.path.join(data_dir, "Q_structure_factors.png")
-    plot_structure_factors(
-        data_dir,
-        plot_titles_Q,
-        output_image,
-        norm_const,
-        qx_min,
-        qx_max,
-        data_type="Norm",
-        cmap=color_map,
-        vmax=1250
-    )
+    # output_image = os.path.join(data_dir, "Q_structure_factors."+format)
+    # plot_structure_factors(
+    #     data_dir,
+    #     plot_titles_Q,
+    #     output_image,
+    #     norm_const,
+    #     qx_min,
+    #     qx_max,
+    #     data_type="Norm",
+    #     cmap=color_map,
+    #     vmax=1250
+    # )
+    
+    # output_image = os.path.join(data_dir, "C_structure_factors."+format)
+    # plot_structure_factors(
+    #     data_dir,
+    #     plot_titles_C,
+    #     output_image,
+    #     norm_const,
+    #     qx_min,
+    #     qx_max,
+    #     data_type="Norm",
+    #     cmap=color_map,
+    #     vmin=None,
+    #     vmax=None,
+    #     log_scale=False,
+    # )
 
-        # output_image = os.path.join(data_dir, "Q_unpol_cross_section.jpg")
-        # plot_differential_cross_section(
-        #     data_dir,
-        #     output_image,
-        #     qx_min,
-        #     qx_max,
-        #     S_elements=plot_titles_Q,
-        #     polarised=False,
-        #     cmap=color_map,
-        #     vmin=None,
-        #     vmax=None,
-        #     log_scale=True,
-        # )
 
-    output_image = os.path.join(data_dir, "Q_pol_cross_section.png")
+    output_image = os.path.join(data_dir, "Q_pol_cross_section."+format)
     plot_differential_cross_section(
         data_dir,
         output_image,
         qx_min,
         qx_max,
         S_elements=plot_titles_Q,
+        labels=labels,
+        show_ylabel=show_ylabel,
         polarised=True,
         cmap=color_map
     )
 
-        # output_image = os.path.join(data_dir, "C_structure_factors.jpg")
-        # plot_structure_factors(
-        #     data_dir,
-        #     plot_titles_C,
-        #     output_image,
-        #     norm_const,
-        #     qx_min,
-        #     qx_max,
-        #     data_type="Norm",
-        #     cmap=color_map,
-        #     vmin=None,
-        #     vmax=None,
-        #     log_scale=False,
-        # )
 
-    output_image = os.path.join(data_dir, "C_unpol_cross_section.png")
-    plot_differential_cross_section(
-        data_dir,
-        output_image,
-        qx_min,
-        qx_max,
-        S_elements=plot_titles_C,
-        polarised=False,
-        cmap=color_map,
-        vmax=6e3,
-        extend="max"
-    )
+    # output_image = os.path.join(data_dir, "C_pol_cross_section."+format)
+    # plot_differential_cross_section(
+    #     data_dir,
+    #     output_image,
+    #     qx_min,
+    #     qx_max,
+    #     S_elements=plot_titles_C,
+    #     labels=labels,
+    #     show_ylabel=show_ylabel,
+    #     polarised=True,
+    #     cmap=color_map,
+    # )
 
-        # output_image = os.path.join(data_dir, "C_pol_cross_section.jpg")
-        # plot_differential_cross_section(
-        #     data_dir,
-        #     output_image,
-        #     qx_min,
-        #     qx_max,
-        #     S_elements=plot_titles_C,
-        #     polarised=True,
-        #     cmap=color_map,
-        #     vmin=None,
-        #     vmax=None,
-        #     log_scale=False,
-        # )
-
-        output_image = os.path.join(data_dir, "pol_connected_cross_section.jpg")
-        labels = [r"$\rm (b)$", r"$c=1/\sqrt{2}$"]
-        plot_connected_cross_section(
-            data_dir,
-            output_image,
-            qx_min,
-            qx_max,
-            S_elements1=plot_titles_Q,
-            S_elements2=plot_titles_C,
-            labels=labels,
-            polarised=True,
-            cmap=color_map,
-            vmin=None,
-            vmax=None,
-            log_scale=False,
-        )
-
-    output_image = os.path.join(data_dir, "connected_unpol_cross_section.png")
+    output_image = os.path.join(data_dir, "pol_connected_cross_section."+format)
     plot_connected_cross_section(
         data_dir,
         output_image,
@@ -157,28 +118,46 @@ def process_folder(data_dir):
         qx_max,
         S_elements1=plot_titles_Q,
         S_elements2=plot_titles_C,
-        polarised=False,
-        cmap=color_map,
-        log_scale=True
+        labels=labels,
+        show_ylabel=show_ylabel,
+        polarised=True,
+        cmap=color_map
     )
-    
+
 
 if __name__ == "__main__":
 
-    base = os.path.join("..","data_corr", "out_corr")
+    base = os.path.join("..","data_corr", "out_corr_ps")
 
     # this finds all subfolders in out_corr
-    data_dirs = [
+    data_dirs = sorted([
         os.path.join(base, d)
         for d in os.listdir(base)
         if os.path.isdir(os.path.join(base, d))
+    ])
+    
+    
+    label_list = [
+    [r"$\rm (a)$", r"$c=0$"],
+    [r"$\rm (b)$", r"$c=1/\sqrt{2}$"],
+    [r"$\rm (c)$", r"$c=1$"]
     ]
+
+    if len(label_list) != len(data_dirs):
+        raise ValueError("Number of labels must match number of data directories.")
+
+    
+    args_list = []
+    for i, (data_dir, labels) in enumerate(zip(data_dirs, label_list)):
+        show_ylabel = (i == 0)   # Only the first gets y-label
+        args_list.append((data_dir, labels, show_ylabel))
+
 
     start_time = time.time()
      
-    num_workers = min(cpu_count(), len(data_dirs))
+    num_workers = min(cpu_count(), len(args_list))
     with Pool(num_workers) as pool:
-        pool.map(process_folder, data_dirs)  #image editting is to be done within process_folder()
+        pool.map(process_folder, args_list)  
         
         
     # plot_titles_Q = [
