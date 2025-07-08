@@ -219,7 +219,7 @@ def plot_differential_cross_section(
         c,
         orientation="horizontal",
         location="top",
-        pad=0.0075,
+        pad=0.02,
         aspect=20,
         shrink=1.0,
     )
@@ -324,7 +324,7 @@ def plot_connected_cross_section(
         c,
         orientation="horizontal",
         location="top",
-        pad=0.0075,
+        pad=0.02,
         aspect=20,
         shrink=1.0,
     )

@@ -22,30 +22,8 @@ function reduced_density_matrix(psi::MPS, j::Int64)
   return rhor
 end
 
-let
+function get_lobs(c, ψ)
 
-  c = 1.0
-  if length(ARGS) > 0
-    c = eval(Meta.parse(ARGS[1]))  #this parses string ARGS like "1/sqrt(2)" and interpretes them to .707
-  end
-
-  base_dir = "."
-  target_dir = "data_lobs"
-  mkpath(joinpath("..", target_dir))
-  config_path = joinpath(base_dir, "config.json")
-  p = load_constants(config_path)
-
-  f = h5open(joinpath(base_dir, "states", "state16.h5"), "r")
-  ψ = read(f, "psi", MPS)
-  close(f)
-
-  new_sites = siteinds("S=1/2", length(ψ))
-  for i in eachindex(ψ)
-    ψ[i] = replaceind(ψ[i], siteinds(ψ)[i] => new_sites[i])  
-  end
-
-  Lx, Ly = p["Lx"], p["Ly"]
-  lattice = build_lattice(Lx, Ly, "rectangular")
   ψ = c * ψ + sqrt(1 - c^2) * conj.(ψ)
 
   Mx, My, Mz, s, Δ = (zeros(length(siteinds(ψ))) for _ in 1:5)
@@ -70,6 +48,36 @@ let
 
   end
 
+  return Mx, My, Mz, s, Δ
+end
+
+let
+
+  c = 1.0
+
+  base_dir = "."
+  target_dir = "data_lobs"
+  config = "config_local.json"
+  state = "state16.h5"
+
+  mkpath(joinpath("..", target_dir))
+  config_path = joinpath(base_dir, config)
+  p = JSON.parsefile(config_path)
+
+  Lx, Ly = p["Lx"], p["Ly"]
+  lattice = build_lattice(Lx, Ly, "rectangular")
+
+  f = h5open(joinpath(base_dir, "states", state), "r")
+  ψ = read(f, "psi", MPS)
+  close(f)
+
+  new_sites = siteinds("S=1/2", length(ψ))
+  for i in eachindex(ψ)
+    ψ[i] = replaceind(ψ[i], siteinds(ψ)[i] => new_sites[i])
+  end
+
+  Mx, My, Mz, s, Δ = get_lobs(c, ψ)
+
   data = DataFrame(
     x=lattice[1, :],
     y=lattice[2, :],
@@ -80,24 +88,22 @@ let
     Delta=Δ
   )
   CSV.write(joinpath("..", target_dir, "lobs.csv"), data)
-  println("Data saved to lobs.csv")
+  println("Data for c=$c saved to lobs.csv")
 
+  avg_s = []
+  c_range = range(0.0, 1.0, 20)
+  for c in c_range
+    _, _, _, s, _ = get_lobs(c, ψ)
 
-  fig = plt.figure()
-  ax = fig.add_subplot(projection="3d")
-
-  for j in axes(lattice, 2)
-    r = [lattice[1, j], lattice[2, j]]
-    cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r")
-    vmin = minimum(Mz)
-    vmax = maximum(Mz)
-    norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
-    ax.quiver(r[1], r[2], 0.0, Mx[j], My[j], Mz[j], normalize=true, color=cmap(norm(Mz[j])))
+    as = sum(s) / (Lx * Ly)
+    append!(avg_s, as)
+    @info "Entropy for c=$c logged!"
   end
-  plt.xlabel("x")
-  plt.ylabel("y")
-  ax.set_aspect("equal")
+
+  plt.figure()
+  plt.scatter(c_range, avg_s)
   plt.show()
+  plt.close()
 
   return
 end
@@ -133,3 +139,4 @@ end
 # plt.ylabel("y")
 # ax.set_aspect("equal")
 # plt.show()
+

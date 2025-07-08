@@ -2,117 +2,118 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+from matplotlib.gridspec import GridSpec
 
 plt.rc("text", usetex=True)
 plt.rc("text.latex", preamble="\\usepackage{bm,braket}")
 # plt.rc("text.latex", preamble='\\usepackage{amsmath}')
 
 
-def plot_energies(w,h):
-    data_all1 = pd.read_csv("data/sk_states.csv")
-    data_all2 = pd.read_csv("data/ask_states.csv")
+def plot_fig2():
+    
+    data_sk = pd.read_csv("data/sk_states.csv")
+    data_ask = pd.read_csv("data/ask_states.csv")
 
-    data_all2 = data_all2[data_all2["E"] >= max(data_all1["E"]) - 0.1]
+    data_ask_filtered = data_ask[data_ask["E"] >= max(data_sk["E"]) - 0.1]
 
     prop_cycle = plt.rcParams["axes.prop_cycle"]
     colors = prop_cycle.by_key()["color"]
 
-    font = 10
-    markersize = 2
-    fig, ax = plt.subplots(figsize=(w, h))
+    plt.rc("text", usetex=True)
+    plt.rc("text.latex", preamble=r"\usepackage{bm,braket,xcolor}")
 
-    for (M, group), color in zip(data_all1.groupby("M"), colors):
-        plt.plot(
-            group["alpha"],
-            2.0 * group["E"],
-            label=f"${M}$",
-            marker="o",
-            markersize=markersize,
-            color=color,
-        )
-        plt.plot(
-            -group["alpha"],
-            2.0 * group["E"],
-            marker="o",
-            markersize=markersize,
-            color=color,
-        )
-    plt.legend()
-    for (M, group), color in zip(data_all2.groupby("M"), colors):
-        plt.plot(
-            group["alpha"],
-            2.0 * group["E"],
-            marker="o",
-            markersize=markersize,
-            color=color,
-        )
-        plt.plot(
-            -group["alpha"],
-            2.0 * group["E"],
-            marker="o",
-            markersize=markersize,
-            color=color,
-        )
+    w_total = 7  
+    h_total = 3.5
 
-    plt.xlabel(r"$\mathrm{DM~anisotropy}, ~ \alpha$", fontsize=font)
-    plt.ylabel(r"$\mathrm{Energy}, ~ E / J$", fontsize=font)
+    fig = plt.figure(figsize=(w_total, h_total), constrained_layout=True)
+    gs = GridSpec(2, 2, figure=fig, width_ratios=[1, 1], height_ratios=[1, 1])
 
-    ax.yaxis.set_major_locator(MaxNLocator(nbins=4))
-    plt.tick_params(labelsize=10)
-    legend = ax.legend(
+    ax0 = fig.add_subplot(gs[:, 0])
+
+    for (M, group), color in zip(data_sk.groupby("M"), colors):
+        ax0.plot(group["alpha"], 2 * group["E"], marker="o", markersize=2, label=f"${M}$", color=color)
+        ax0.plot(-group["alpha"], 2 * group["E"], marker="o", markersize=2, color=color)
+
+    for (M, group), color in zip(data_ask_filtered.groupby("M"), colors):
+        ax0.plot(group["alpha"], 2 * group["E"], marker="o", markersize=2, color=color)
+        ax0.plot(-group["alpha"], 2 * group["E"], marker="o", markersize=2, color=color)
+
+    ax0.set_xlabel(r"$\mathrm{DM~anisotropy}, ~ \alpha$")
+    ax0.set_ylabel(r"$\mathrm{Energy}, ~ E/J$")
+    ax0.set_xlim([-0.25, 0.25])
+    ax0.set_ylim([-509.5, -507.2])
+    ax0.yaxis.set_major_locator(MaxNLocator(nbins=4))
+    ax0.grid(True)
+
+    legend = ax0.legend(
         title=r"$\mathrm{Bond~dimension,}~\chi$",
-        fontsize=font,
-        title_fontsize=font,
-        loc="lower center",
-    )
-    
-    ax.text(
-        0.02,
-        0.99,
-        "\\rm (a)",
-        transform=ax.transAxes,
-        fontsize=font,
-        color="black",
-        ha="left",
-        va="top",
+        fontsize=8,
+        title_fontsize=8,
+        loc="upper center",
     )
 
-    ax.text(
-        0.22,
-        0.65,
-        r"$\mathrm{Ask}$",
-        transform=ax.transAxes,
-        fontsize=font,
-        color="black",
-        ha="left",
-        va="top",
-    )
+    ax0.text(0.02, 0.99, r"\textrm{(a)}", transform=ax0.transAxes, fontsize=9, va="top")
 
-    ax.text(
-        0.69,
-        0.65,
-        r"$\mathrm{Sk}$",
-        transform=ax.transAxes,
-        fontsize=font,
-        color="black",
-        ha="left",
-        va="top",
-    )
+    ax0.text(0.22, 0.35, r"$\mathrm{ASK}$", transform=ax0.transAxes, fontsize=9)
+    ax0.text(0.69, 0.35, r"$\mathrm{SK}$", transform=ax0.transAxes, fontsize=9)
 
-    plt.hlines(
-        y=2 * max(data_all1["E"][data_all1["M"] == 16]),
-        xmin=-max(data_all2["alpha"]),
-        xmax=max(data_all2["alpha"]),
+    ax0.hlines(
+        y=2 * max(data_sk["E"][data_sk["M"] == 16]),
+        xmin=-max(data_ask["alpha"]),
+        xmax=max(data_ask["alpha"]),
         color="gray",
         linestyle="--",
     )
 
-    plt.xlim([-0.3, 0.3])
-    plt.ylim([-510.9, -507.4])
-    plt.setp(legend.get_texts(), fontsize=font)  # Adjusts legend item fontsize
-    plt.setp(legend.get_title(), fontsize=font)  # Title font size and bold
-    plt.grid(True)
-    plt.savefig("energy.pdf", bbox_inches="tight")
+   
+    ax1 = fig.add_subplot(gs[0, 1])
+
+    for M, d in data_sk.groupby("alpha"):
+        dsel = d[d["alpha"] < 0.05]
+        ax1.plot(1 / dsel["M"], 4 * dsel["sigma"], marker="o", markersize=2)
+
+    ax1.set_ylabel(r"\rm Energy~spread")
+    ax1.set_yscale("log")
+    ax1.grid(True)
+    ax1.text(0.03, 0.95, r"\textrm{(b) SK}", transform=ax1.transAxes, fontsize=9, va="top")
+
+    
+    ax2 = fig.add_subplot(gs[1, 1])
+
+    for M, d in data_ask.groupby("alpha"):
+        dsel = d[np.abs(d["alpha"] - 0.0) < 0.05]
+        if len(dsel) == 0:
+            continue
+        ax2.plot(
+            1 / dsel["M"],
+            4 * dsel["sigma"],
+            marker="o",
+            markersize=2,
+            label=f"${np.round(np.unique(dsel['alpha'])[0],2)}$",
+        )
+
+    ax2.set_ylabel(r"\rm Energy~spread")
+    ax2.set_xlabel(r"\rm Inverse bond dimension, $1/\chi$")
+    ax2.set_yscale("log")
+    ax2.grid(True)
+    ax2.text(0.03, 0.95, r"\textrm{(c) ASK}", transform=ax2.transAxes, fontsize=9, va="top")
+
+
+    ticks = [0, 1, 2, 4]
+    xticks = [1 / 2**i for i in ticks]
+    xlabels = [f"$1/{2**i}$" for i in ticks]
+    ax1.set_xticks(xticks, labels=xlabels)
+    ax2.set_xticks(xticks, labels=xlabels)
+
+
+    ax2.legend(
+        title=r"$\mathrm{DM~anisotropy}~\alpha$",
+        fontsize=8,
+        title_fontsize=8,
+        loc="lower right",
+    )
+
+    plt.savefig("cross_spread.pdf")
     plt.close()
 
 
@@ -237,11 +238,10 @@ def plot_anisos(w,h):
 
 if __name__ == "__main__":
 
-    w = 3 + 3 / 8
-    h = 3 + 3 / 8
-    plot_energies(w,h)
-    
-    # w = 2.4
-    # h = 2.4
+    w = 2.4
+    h = 2.4
     # plot_pd(w,h)
     # plot_anisos(w,h)
+    
+    plot_fig2()
+    
