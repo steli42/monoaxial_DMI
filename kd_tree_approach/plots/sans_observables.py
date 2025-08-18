@@ -14,6 +14,7 @@ from multiprocessing import Pool, cpu_count
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 
+
 def process_folder(args):
 
     data_dir, labels, show_ylabel = args 
@@ -30,28 +31,12 @@ def process_folder(args):
     color_map = "magma"  # "inferno" #"RdBu_r"
     format = "jpg"
 
-    plot_titles_Q = [
-        "S_{xx}",
-        "S_{xy}",
-        "S_{xz}",
-        "S_{yx}",
-        "S_{yy}",
-        "S_{yz}",
-        "S_{zx}",
-        "S_{zy}",
-        "S_{zz}",
-    ]
-    plot_titles_C = [
-        "G_{xx}",
-        "G_{xy}",
-        "G_{xz}",
-        "G_{yx}",
-        "G_{yy}",
-        "G_{yz}",
-        "G_{zx}",
-        "G_{zy}",
-        "G_{zz}",
-    ]
+    indices = ["x", "y", "z"]
+    plot_titles_Q = [f"S_{{{i}{j}}}" for i in indices for j in indices]
+
+    indices = ["x", "y", "z"]
+    plot_titles_C = [f"G_{{{i}{j}}}" for i in indices for j in indices]
+
     
     # log_scale maps non-positive values to NaN and windows filled with NaN values will be left transparent
     # output_image = os.path.join(data_dir, "Q_structure_factors."+format)
@@ -127,7 +112,7 @@ def process_folder(args):
 
 if __name__ == "__main__":
 
-    base = os.path.join("..","data_corr", "out_corr_ps")
+    base = os.path.join("..","data_corr", "out_corr")
 
     # this finds all subfolders in out_corr
     data_dirs = sorted([
@@ -138,9 +123,9 @@ if __name__ == "__main__":
     
     
     label_list = [
-    [r"$\rm (a)$", r"$c=0$"],
-    [r"$\rm (b)$", r"$c=1/\sqrt{2}$"],
-    [r"$\rm (c)$", r"$c=1$"]
+    [r"$\rm (a)$", r"$\rm (a)$", r"$c=0$"],
+    [r"$\rm (b)$", r"$\rm (b)$", r"$c=1/\sqrt{2}$"],
+    [r"$\rm (c)$", r"$\rm (c)$", r"$c=1$"]
     ]
 
     if len(label_list) != len(data_dirs):
@@ -149,74 +134,32 @@ if __name__ == "__main__":
     
     args_list = []
     for i, (data_dir, labels) in enumerate(zip(data_dirs, label_list)):
-        show_ylabel = (i == 0)   # Only the first gets y-label
+        show_ylabel = (i == 0)   # only the first panel gets a y-label
         args_list.append((data_dir, labels, show_ylabel))
 
 
     start_time = time.time()
      
-    num_workers = min(cpu_count(), len(args_list))
-    with Pool(num_workers) as pool:
-        pool.map(process_folder, args_list)  
+    # num_workers = min(cpu_count(), len(args_list))
+    # with Pool(num_workers) as pool:
+    #     pool.map(process_folder, args_list)  
         
         
-    # plot_titles_Q = [
-    #     "S_{xx}",
-    #     "S_{xy}",
-    #     "S_{xz}",
-    #     "S_{yx}",
-    #     "S_{yy}",
-    #     "S_{yz}",
-    #     "S_{zx}",
-    #     "S_{zy}",
-    #     "S_{zz}",
-    # ]
+    indices = ["x", "y", "z"]
+    plot_titles_Q = [f"S_{{{i}{j}}}" for i in indices for j in indices]
+
         
-    # custom_labels = [r"$c=0.0$", r"$c=1/\sqrt{2}$", r"$c=1.0$"]
-    # bins = 160
-    # plot_radial_averages(
-    #     data_dirs,
-    #     custom_labels,
-    #     num_bins=bins,
-    #     S_elements=plot_titles_Q,
-    #     polarised=True,
-    #     normalised=False,
-    #     log_log=True,
-    #     output_image=os.path.join(base, "Q_pol_radial_averages.png"),
-    # )
-
-    # plot_radial_averages(
-    #     data_dirs,
-    #     custom_labels,
-    #     num_bins=bins,
-    #     S_elements=plot_titles_Q,
-    #     polarised=False,
-    #     normalised=False,
-    #     log_log=True,
-    #     output_image=os.path.join(base, "Q_unpol_radial_averages.png"),
-    # )
-
-    # plot_radial_averages(
-    #     data_dirs,
-    #     custom_labels,
-    #     num_bins=bins,
-    #     S_elements=plot_titles_C,
-    #     polarised=True,
-    #     normalised=False,
-    #     log_log=True,
-    #     output_image=os.path.join(base, "C_pol_radial_averages.png"),
-    # )
-
-    # plot_radial_averages(
-    #     data_dirs,
-    #     custom_labels,
-    #     num_bins=bins,
-    #     S_elements=plot_titles_C,
-    #     polarised=False,
-    #     normalised=False,
-    #     log_log=True,
-    #     output_image=os.path.join(base, "C_unpol_radial_averages.png"),
-    # )
+    custom_labels = [r"$c=0.0$", r"$c=1/\sqrt{2}$", r"$c=1.0$"]
+    plot_radial_averages(
+        data_dirs,
+        custom_labels,
+        S_elements=plot_titles_Q,
+        num_bins=195,
+        polarised=True,
+        normalised=False,
+        xlog=True,
+        output_image=os.path.join(base, "Q_pol_radial_averages.pdf"),
+    )
 
     end_time = time.time()
     print(f"Execution time: {end_time - start_time:.2f} seconds")

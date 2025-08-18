@@ -90,20 +90,22 @@ let
   CSV.write(joinpath("..", target_dir, "lobs.csv"), data)
   println("Data for c=$c saved to lobs.csv")
 
-  avg_s = []
-  c_range = range(0.0, 1.0, 20)
+  max_s = []
+  c_range = range(0.0, 1.0, 100)
   for c in c_range
     _, _, _, s, _ = get_lobs(c, ψ)
 
-    as = sum(s) / (Lx * Ly)
-    append!(avg_s, as)
-    @info "Entropy for c=$c logged!"
+    as = maximum(s)
+
+    append!(max_s, as)
+    # @info "Entropy for c=$c logged!"
   end
 
-  plt.figure()
-  plt.scatter(c_range, avg_s)
-  plt.show()
-  plt.close()
+  data = DataFrame(
+    amp = c_range,
+    max_s = max_s,
+  )
+  CSV.write(joinpath("..", target_dir, "lobs_max_s.csv"), data)
 
   return
 end

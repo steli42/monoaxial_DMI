@@ -10,22 +10,22 @@ import json
 plt.rc("text", usetex=True)
 plt.rc("text.latex", preamble="\\usepackage{bm,braket,xcolor}")
 
-fn1 = "elipse_01.csv"
-fn2 = "elipse_05.csv"
-fn3 = "elipse_025.csv"
-fn4 = "elipse_abr.csv"
+fn1 = "data/elipse_01.csv"
+fn2 = "data/elipse_05.csv"
+fn3 = "data/elipse_025.csv"
+fn4 = "data/elipse_abr.csv"
 
 d1 = pd.read_csv(fn1, header=None)
 d2 = pd.read_csv(fn2, header=None)
 d3 = pd.read_csv(fn3, header=None)
 d4 = pd.read_csv(fn4, header=None)
 
-gr = (1 + np.sqrt(5)) / 2.0
-font = 10
-w = gr * (3 + 3 / 8) * 0.82
-h = (3 + 3 / 8) * 0.82
-fig, ax = plt.subplots(1, 1, figsize=(w, h))
+font = 8
+w = (3 + 3 / 8) 
+h = w * 0.85
+fig = plt.figure(figsize=(w, h))
 
+ax = plt.gca()
 ax.plot(d4[0], d4[1], label="$\\rm sudden\\ quench$")
 ax.plot(d3[0], d3[1], label="$0.05$")
 ax.plot(d2[0], d2[1], label="$0.025$")
@@ -45,9 +45,9 @@ ax.set_ylim(-1, 9)
 # ticks = [0, 1, 2, 4]
 # axs[0].set_xticks([1/2**i for i in ticks], labels=[f'$1/{2**i}$' for i in ticks])
 # axs[1].set_xticks([1/2**i for i in ticks], labels=[f'$1/{2**i}$' for i in ticks])
-ax.set_ylabel("$\\rm skyrmion\\ center$ $x_{\\rm sk}/a$", fontsize=font)
-ax.set_xlabel("$\\rm dimensionless\\ time$ $t|J|/s$", fontsize=font)
-plt.tight_layout()
+ax.set_ylabel("$\\rm Skyrmion\\ center$ $x_{\\rm sk}/a$", fontsize=font)
+ax.set_xlabel("$\\rm Dimensionless\\ time$ $t|J|/s$", fontsize=font)
+# plt.tight_layout()
 # plt.legend(title='${\\rm temporal\\ modulation\\ }p$', loc='lower right')
-plt.legend(title="${\\rm temporal\\ modulation\\ }p$", loc="upper left", fontsize=font)
-plt.savefig("x_com_t_2.jpg", dpi=600, bbox_inches="tight")
+plt.legend(title="${\\rm temporal\\ modulation\\ }p$", loc="upper left", fontsize=font, title_fontsize=font)
+plt.savefig("x_com_t_2.pdf", bbox_inches="tight")

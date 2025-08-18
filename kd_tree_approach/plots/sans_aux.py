@@ -259,7 +259,7 @@ def plot_differential_cross_section(
     ax.text(
         0.02,
         0.02,
-        labels[1],
+        labels[2],
         transform=ax.transAxes,
         fontsize=font,
         fontweight="bold",
@@ -353,7 +353,7 @@ def plot_connected_cross_section(
     ax.text(
         0.02,
         0.98,
-        labels[0],
+        labels[1],
         transform=ax.transAxes,
         fontsize=font,
         fontweight="bold",
@@ -365,7 +365,7 @@ def plot_connected_cross_section(
     ax.text(
         0.02,
         0.02,
-        labels[1],
+        labels[2],
         transform=ax.transAxes,
         fontsize=font,
         fontweight="bold",
@@ -380,49 +380,57 @@ def plot_connected_cross_section(
 
 
 def calculate_radial_average(qx, qy, sigma, num_bins):
-
-    # Convert Cartesian coordinates (qx, qy) to polar coordinates (q, theta)
+    # Compute radial distance q
     q = np.sqrt(qx**2 + qy**2)
-    # theta = np.arctan2(qy, qx)
 
-    # Create bins for radial averaging
+    # Create bins
     q_max = np.max(qx)
     q_bins = np.linspace(0, q_max, num_bins + 1)
-    sigma_radial_avg = np.zeros(num_bins)
+    q_bin_centers = 0.5 * (q_bins[:-1] + q_bins[1:])
+
+    # Flatten arrays
+    q_flat = q.ravel()
+    sigma_flat = sigma.ravel()
+
+    # Digitize q values
+    bin_indices = np.digitize(q_flat, q_bins) - 1
+
+    # Allocate arrays
+    sigma_radial_sum = np.zeros(num_bins)
     bin_counts = np.zeros(num_bins)
 
-    # Iterate over all points and bin the sigma values based on the radial distance q
-    for i in range(sigma.shape[0]):
-        for j in range(sigma.shape[1]):
-            q_val = q[i, j]
-            sigma_val = sigma[i, j]
+    # Accumulate sums and counts
+    for b in range(num_bins):
+        mask = bin_indices == b
+        sigma_radial_sum[b] = np.sum(sigma_flat[mask])
+        bin_counts[b] = np.sum(mask)
 
-            # Find the bin index for the current q_val
-            bin_idx = np.digitize(q_val, q_bins) - 1  # bin_idx starts from 0
-            if bin_idx >= 0 and bin_idx < num_bins:
-                sigma_radial_avg[bin_idx] += sigma_val
-                bin_counts[bin_idx] += 1
+    # Compute averages safely
+    sigma_radial_avg = np.divide(
+        sigma_radial_sum,
+        bin_counts,
+        out=np.zeros_like(sigma_radial_sum),
+        where=bin_counts > 0
+    )
 
-    # Normalize by the number of points in each bin
-    sigma_radial_avg = np.divide(sigma_radial_avg, bin_counts, where=bin_counts > 0)
-
-    # Return the radial bins (as the centers of the bins) and the averaged sigma values
-    q_bin_centers = 0.5 * (q_bins[:-1] + q_bins[1:])
     return q_bin_centers, sigma_radial_avg
+
 
 
 def plot_radial_averages(
     data_dirs,
     custom_labels,
-    num_bins,
     S_elements,
+    num_bins=160,
     polarised=False,
     normalised=False,
-    log_log=False,
+    xlog=False,
     output_image="radial_averages.jpg",
 ):
 
-    plt.figure(figsize=(8, 6))
+    w = 3.6
+    h = (3 + 3/8) * 0.5
+    plt.figure(figsize=(w, h))
 
     for data_dir, label in zip(data_dirs, custom_labels):
 
@@ -442,27 +450,24 @@ def plot_radial_averages(
             sigma_radial_avg,
             label=label,
             marker="o",
-            markersize=4,
-            markerfacecolor="none",
+            markersize=2,
+            markerfacecolor="white",
+            markevery=3
         )
 
-    if log_log == True:
+    ax = plt.gca()
+    if xlog:
         plt.xscale("log")
-        plt.yscale("log")
+        
+    plt.xlabel(r"$qa$", fontsize=8)
+    plt.ylabel(r"$I_{\rm sf}(qa)$", fontsize=8)
+    ax.tick_params(axis='both', labelsize=8)
+    ax.text(0.0105, 620, r"$\rm (g)$", fontsize=8)
 
-    plt.xlabel(r"$q \, a$")
-    plt.ylabel(r"$I(q)$")
-
-    if polarised == True:
-        plt.title("Radial Average of Polarised Cross Section")
-    else:
-        plt.title("Radial Average of Unpolarised Cross Section")
-    plt.legend()
-    plt.grid(True, which="major", linestyle="--")
-    # plt.minorticks_on()
-
-    # Save the figure
-    plt.savefig(output_image, dpi=600)
+    plt.legend(fontsize=8)
+    plt.grid(True, linestyle='--')
+    plt.xlim([1e-2, 1.0])
+    plt.savefig(output_image, bbox_inches="tight")
     plt.close()
 
 
