@@ -22,30 +22,8 @@ function reduced_density_matrix(psi::MPS, j::Int64)
   return rhor
 end
 
-let
+function get_lobs(c, ψ)
 
-  c = 1.0
-  if length(ARGS) > 0
-    c = eval(Meta.parse(ARGS[1]))  #this parses string ARGS like "1/sqrt(2)" and interpretes them to .707
-  end
-
-  base_dir = "."
-  target_dir = "data_lobs"
-  mkpath(joinpath("..", target_dir))
-  config_path = joinpath(base_dir, "config.json")
-  p = load_constants(config_path)
-
-  f = h5open(joinpath(base_dir, "states", "state16.h5"), "r")
-  ψ = read(f, "psi", MPS)
-  close(f)
-
-  new_sites = siteinds("S=1/2", length(ψ))
-  for i in eachindex(ψ)
-    ψ[i] = replaceind(ψ[i], siteinds(ψ)[i] => new_sites[i])  
-  end
-
-  Lx, Ly = p["Lx"], p["Ly"]
-  lattice = build_lattice(Lx, Ly, "rectangular")
   ψ = c * ψ + sqrt(1 - c^2) * conj.(ψ)
 
   Mx, My, Mz, s, Δ = (zeros(length(siteinds(ψ))) for _ in 1:5)
@@ -70,6 +48,36 @@ let
 
   end
 
+  return Mx, My, Mz, s, Δ
+end
+
+let
+
+  c = 1.0
+
+  base_dir = "."
+  target_dir = "data_lobs"
+  config = "config_local.json"
+  state = "1_0_state.h5"
+
+  mkpath(joinpath("..", target_dir))
+  config_path = joinpath(base_dir, config)
+  p = JSON.parsefile(config_path)
+
+  Lx, Ly = p["Lx"], p["Ly"]
+  lattice = build_lattice(Lx, Ly, "rectangular")
+
+  f = h5open(joinpath(base_dir, "states", state), "r")
+  ψ = read(f, "psi", MPS)
+  close(f)
+
+  new_sites = siteinds("S=1/2", length(ψ))
+  for i in eachindex(ψ)
+    ψ[i] = replaceind(ψ[i], siteinds(ψ)[i] => new_sites[i])
+  end
+
+  Mx, My, Mz, s, Δ = get_lobs(c, ψ)
+
   data = DataFrame(
     x=lattice[1, :],
     y=lattice[2, :],
@@ -80,13 +88,12 @@ let
     Delta=Δ
   )
   CSV.write(joinpath("..", target_dir, "lobs.csv"), data)
-  println("Data saved to lobs.csv")
-
+  println("Data for c=$c saved to lobs.csv")
 
   fig = plt.figure()
   ax = fig.add_subplot(projection="3d")
 
-  for j in axes(lattice, 2)
+  for j in axes(lattice,2)
     r = [lattice[1, j], lattice[2, j]]
     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r")
     vmin = minimum(Mz)
@@ -98,6 +105,24 @@ let
   plt.ylabel("y")
   ax.set_aspect("equal")
   plt.show()
+
+
+  # max_s = []
+  # c_range = range(0.0, 1.0, 100)
+  # for c in c_range
+  #   _, _, _, s, _ = get_lobs(c, ψ)
+
+  #   as = maximum(s)
+
+  #   append!(max_s, as)
+  #   # @info "Entropy for c=$c logged!"
+  # end
+
+  # data = DataFrame(
+  #   amp = c_range,
+  #   max_s = max_s,
+  # )
+  # CSV.write(joinpath("..", target_dir, "lobs_max_s.csv"), data)
 
   return
 end
@@ -133,3 +158,4 @@ end
 # plt.ylabel("y")
 # ax.set_aspect("equal")
 # plt.show()
+

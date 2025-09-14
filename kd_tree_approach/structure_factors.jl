@@ -166,6 +166,7 @@ function my_correlation_matrix(psi::MPS, _Op1, _Op2; sites=1:length(psi), site_r
   return C
 end
 
+
 function gamma_matrix(psi::MPS, S1::String, S2::String, ferromagnetic::Bool)
 
   # For a polarized state, the expect() goes crazy so we need to create the extra flag.
@@ -184,6 +185,7 @@ function gamma_matrix(psi::MPS, S1::String, S2::String, ferromagnetic::Bool)
 
   return gamma
 end
+
 
 function calculate_structureFactor(lattice::Array{Float64,2}, ψ::MPS, q_max, q_step, S1::String, S2::String)
 
@@ -212,6 +214,7 @@ function calculate_structureFactor(lattice::Array{Float64,2}, ψ::MPS, q_max, q_
   qx_mesh, qy_mesh = meshgrid(collect(qx_range), collect(qy_range))
   return qx_mesh, qy_mesh, S_values_real, S_values_imag, S_values_norm
 end
+
 
 function calculate_classical_structureFactor(lattice::Array{Float64,2}, ψ::MPS, q_max, q_step, S1::String, S2::String, ferromagnetic::Bool)
 
@@ -243,16 +246,16 @@ end
 
 let
 
-  base_dir = "kd_tree_approach"
-  target_dir = joinpath("data_corr", "out_corr")
-  config_path = joinpath("kd_tree_approach","config.json")
-  p = load_constants(config_path)
+  base_dir = "."
+  target_dir = joinpath("..", "data_corr", "out_corr")
+  config_path = joinpath(".", "config_local.json")
+  p = JSON.parsefile(config_path)
 
-  input_dir = joinpath("kd_tree_approach", "states")
+  input_dir = joinpath(".", "states")
   f = h5open(joinpath(input_dir, "state16.h5"), "r")
   ψ₁ = read(f, "psi", MPS)
   close(f)
-  new_sites = siteinds("S=1/2", length(ψ₁))   
+  new_sites = siteinds("S=1/2", length(ψ₁))
   for i in eachindex(ψ₁)
     ψ₁[i] = replaceind(ψ₁[i], siteinds(ψ₁)[i] => new_sites[i])  # Replace site indices
   end
@@ -260,7 +263,7 @@ let
   Lx, Ly = p["Lx"], p["Ly"]
   lattice = build_lattice(Lx, Ly, "rectangular")
 
-  q_max = p["q_max"]  
+  q_max = p["q_max"]
   q_step = p["q_step"]
   # !!! CAREFUL ABOUT THE FERRO FLAG !!!  
   # ferromagnetic polarised states need to be treated with extra care: see gamma_matrix() for detail 
@@ -274,7 +277,7 @@ let
     ("Sy", "Sx", "G_{yx}"), ("Sy", "Sy", "G_{yy}"), ("Sy", "Sz", "G_{yz}"),
     ("Sz", "Sx", "G_{zx}"), ("Sz", "Sy", "G_{zy}"), ("Sz", "Sz", "G_{zz}")]
 
-  @time for c in [0.0, 1/sqrt(2), 1.0] 
+  @time for c in [0.0, 1 / sqrt(2), 1.0]
     formatted_c = replace(string(round(c, digits=3)), "." => "_")
     output_dir = joinpath(target_dir, "out_$(formatted_c)")
     mkpath(output_dir)
@@ -320,46 +323,46 @@ end
 
 
 
-  #########################################################################################################################
-  # sx_expval = expect(ψ, "Sx")
-  # sy_expval = expect(ψ, "Sy")
-  # sz_expval = expect(ψ, "Sz")
+#########################################################################################################################
+# sx_expval = expect(ψ, "Sx")
+# sy_expval = expect(ψ, "Sy")
+# sz_expval = expect(ψ, "Sz")
 
-  # fig = plt.figure()
-  # ax = fig.add_subplot(projection = "3d")
-      
-  # for idx in axes(lattice,2)
-  #     t = sz_expval
-  #     x, y, z = lattice[1,idx],lattice[2,idx], 0.0
-  #     vmin = minimum(t)
-  #     vmax = maximum(t)
-  #     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
-  #     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
-  #     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
-  #     plt.xlabel("x")
-  #     plt.ylabel("y")
-  # end
-  # ax.set_aspect("equal")
-  # plt.show()
+# fig = plt.figure()
+# ax = fig.add_subplot(projection = "3d")
 
-  #########################################################################################################################
-  # This block of code rotates each spin by angle φ and the lattice correspondingly
-  # φ = pi / 4
-  # θφ = zeros(2, length(siteinds(Ψ)))
-  # for id in axes(θφ, 2)
-  #   θφ[2, id] = φ
-  # end
-  # Ψ = rotate_MPS(Ψ, θφ)
-  # normalize!(Ψ)
-  # for id in axes(lattice, 2)
-  #   lattice[:, id] = ez_rotation(lattice[:, id], -φ)
-  # end
+# for idx in axes(lattice,2)
+#     t = sz_expval
+#     x, y, z = lattice[1,idx],lattice[2,idx], 0.0
+#     vmin = minimum(t)
+#     vmax = maximum(t)
+#     cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r") 
+#     norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin,vmax=vmax)
+#     ax.quiver(x, y, z, sx_expval[idx], sy_expval[idx], sz_expval[idx], normalize=true, color=cmap(norm(t[idx])))
+#     plt.xlabel("x")
+#     plt.ylabel("y")
+# end
+# ax.set_aspect("equal")
+# plt.show()
 
-  #########################################################################################################################
-  # This block applies sigma_y to each site; thus flipping the sign of x and z projections ---- this is time reversal
-  # psi_new = copy(Ψ)    
-  # for n in eachindex(Ψ)
-  #   sym = 2 * op("Sy", siteinds(Ψ), n)    # factor 2 changes S to sigma
-  #   psi_new[n] = sym * Ψ[n]
-  # end
-  # Ψ = noprime(psi_new)
+#########################################################################################################################
+# This block of code rotates each spin by angle φ and the lattice correspondingly
+# φ = pi / 4
+# θφ = zeros(2, length(siteinds(Ψ)))
+# for id in axes(θφ, 2)
+#   θφ[2, id] = φ
+# end
+# Ψ = rotate_MPS(Ψ, θφ)
+# normalize!(Ψ)
+# for id in axes(lattice, 2)
+#   lattice[:, id] = ez_rotation(lattice[:, id], -φ)
+# end
+
+#########################################################################################################################
+# This block applies sigma_y to each site; thus flipping the sign of x and z projections ---- this is time reversal
+# psi_new = copy(Ψ)    
+# for n in eachindex(Ψ)
+#   sym = 2 * op("Sy", siteinds(Ψ), n)    # factor 2 changes S to sigma
+#   psi_new[n] = sym * Ψ[n]
+# end
+# Ψ = noprime(psi_new)

@@ -411,7 +411,7 @@ end
 
 let
 
-    Lx, Ly = 61, 31
+    Lx, Ly = 31, 15
     case = "SK" # "rand"/"FM"/"SK"
     ms = 1 / 2
     J = -1.0
@@ -478,20 +478,17 @@ let
 
     ###################################################################################################################### 
     ##TIME EVOLUTION BLOCK################################################################################################ 
-    Γ = prec(g, 0.0)
+    Γ = prec(-g, 0.0)   #these signs are ok??
     τ = damp(g, 0.0)
-    dt = 0.02
-    steps = 8 * Int(1e4)
+    dt = 0.01
+    steps = 5 * Int(1e4)
     amp = 0.02
-    Bg = -2 * amp / Ly * [0.0, 0.0, 1.0] / ms / J
+    Bg = 2 * amp / (Ly-1) * [0.0, 0.0, 1.0] / ms / J
 
     m_evol, ctr = llg_solver_rk4(m, lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, α, alpha_axis, Γ, τ, dt, steps, false)
     # energy = calculate_energy(m_evol[ctr], lattice, boundary, nn_idxs_LL, nn_idxs_LB, B, Bg, J, D, ms, α, alpha_axis) - Evac
     # println("energy of final time-evolved state is: $energy")
     time = 1:ctr
-
-    # plot_m_texture(m_evol[1],lattice,ms) # plots initial texture
-    # plot_m_texture(m_evol[ctr],lattice,ms) # plots final texture
 
     Ns = [sum(mag[3] - 1 for mag in m_evol[t]) / (Lx * Ly) for t in time]
     vel = amp * Lx * g * mean(Ns) / (2 * π)
@@ -517,9 +514,9 @@ let
     # plot(dt*time, [fit_slope*t*dt + fit_intercept for t in time], label="Linear Fit", linestyle=":")
     ylabel("x(t)")
     plt.show()
-    # plt.savefig("atomistic_solver/skyrmion_trajectory_$(Lx)x$(Ly).png", dpi=600)
+    # plt.savefig("./skyrmion_trajectory_$(Lx)x$(Ly).png", dpi=600)
 
-    open("atomistic_solver/coordinates_$(Lx)x$(Ly).csv", "w") do data
+    open("./coordinates_$(Lx)x$(Ly).csv", "w") do data
         for (i, t) in enumerate(time)
             @printf(data, "%f,", dt * t)
             @printf(data, "%f,", x_com[i])
@@ -529,7 +526,7 @@ let
         end
     end
 
-    file_name = "atomistic_solver/m_evol.h5"
+    file_name = "./m_evol.h5"
     export_texture(file_name, m_evol, lattice, Lx, Ly)
 
     return
@@ -581,7 +578,7 @@ end
 
 #     tight_layout()
 #     show()
-#     plt.savefig("atomistic_solver/texture.png",dpi=600)
+#     plt.savefig("./texture.png",dpi=600)
 # end
 
 # plot_magnetization_2D(lattice, m_evol[1])
