@@ -145,6 +145,7 @@ let
     nn_idxs_QC = inrange(tree_Q, tree_C.data, 1.01) # return list of nearest neighbors between classical and quantum sites
 
     if !isfile(init_path)
+        println("No pre-saved MPS! Constructing a product state")
         ψ₀, sites = construct_PS(p["initial_PS"], lattice_Q, D, α, p["wall"], p["radius"], p["eccentricity"])
     else
         println("Resuming from saved MPS: $init_path")
@@ -164,7 +165,7 @@ let
     normalize!(ψ₀)
 
     # make dmrgx look for an ask state
-    ψ₀ = conj.(ψ₀)   
+    # ψ₀ = conj.(ψ₀)   
 
     sweeps = Sweeps(p["sweeps"])  # initialize sweeps object
     maxdim!(sweeps, M)  # set maximum link dimension
@@ -211,8 +212,10 @@ let
         close(psi_file)
 
         # Save the globs
-        observables = DataFrame("M" => [M],
+        observables = DataFrame(
+            "M" => [M],
             "alpha" => [α],
+            "B_amp" => [B_amp],
             "E" => [real(E)],
             "sigma" => [real(σ)],
             "Ec" => [real(E_c)],
@@ -222,8 +225,6 @@ let
         @info "Data written to $(globs_path)"
 
     end
-
-
 
     return
 end

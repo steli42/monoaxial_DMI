@@ -68,15 +68,14 @@ end
 
 function construct_PS(case::String, lattice_Q::Array{Float64,2}, D, α, w, R, ecc)
     sites = siteinds("S=1/2", size(lattice_Q, 2))
-    @info "Initialize PS:"
     if case == "rand"
-        @info "Random..."
+        @info "Random config..."
         ψ₀ = randomMPS(sites)
     elseif case == "FM"
-        @info "Polarised UP..."
+        @info "Polarised UP config..."
         ψ₀ = MPS(sites,["Up" for s in sites])
     elseif case == "SK"
-        @info "Skyrmion configuration..."
+        @info "Skyrmion config..."
         ψ₀ = MPS(sites, ["Up" for s in sites])
         θϕ = zeros(2, size(lattice_Q, 2))
 
