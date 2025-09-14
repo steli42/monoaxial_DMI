@@ -98,10 +98,10 @@ end
 let
 
     base_dir = "."
-    config_path = joinpath(".","config_local.json")
+    config_path = joinpath(base_dir,"config_local.json")
     states_dir = joinpath(base_dir,"states")
 
-    p = load_constants(config_path)
+    p = JSON.parsefile(config_path)
 
     Lx, Ly = p["Lx"], p["Ly"]
     J = p["J"]

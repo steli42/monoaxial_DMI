@@ -58,7 +58,7 @@ let
   base_dir = "."
   target_dir = "data_lobs"
   config = "config_local.json"
-  state = "state16.h5"
+  state = "1_0_state.h5"
 
   mkpath(joinpath("..", target_dir))
   config_path = joinpath(base_dir, config)
@@ -90,22 +90,39 @@ let
   CSV.write(joinpath("..", target_dir, "lobs.csv"), data)
   println("Data for c=$c saved to lobs.csv")
 
-  max_s = []
-  c_range = range(0.0, 1.0, 100)
-  for c in c_range
-    _, _, _, s, _ = get_lobs(c, ψ)
+  fig = plt.figure()
+  ax = fig.add_subplot(projection="3d")
 
-    as = maximum(s)
-
-    append!(max_s, as)
-    # @info "Entropy for c=$c logged!"
+  for j in axes(lattice,2)
+    r = [lattice[1, j], lattice[2, j]]
+    cmap = PyPlot.matplotlib.cm.get_cmap("rainbow_r")
+    vmin = minimum(Mz)
+    vmax = maximum(Mz)
+    norm = PyPlot.matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+    ax.quiver(r[1], r[2], 0.0, Mx[j], My[j], Mz[j], normalize=true, color=cmap(norm(Mz[j])))
   end
+  plt.xlabel("x")
+  plt.ylabel("y")
+  ax.set_aspect("equal")
+  plt.show()
 
-  data = DataFrame(
-    amp = c_range,
-    max_s = max_s,
-  )
-  CSV.write(joinpath("..", target_dir, "lobs_max_s.csv"), data)
+
+  # max_s = []
+  # c_range = range(0.0, 1.0, 100)
+  # for c in c_range
+  #   _, _, _, s, _ = get_lobs(c, ψ)
+
+  #   as = maximum(s)
+
+  #   append!(max_s, as)
+  #   # @info "Entropy for c=$c logged!"
+  # end
+
+  # data = DataFrame(
+  #   amp = c_range,
+  #   max_s = max_s,
+  # )
+  # CSV.write(joinpath("..", target_dir, "lobs_max_s.csv"), data)
 
   return
 end
