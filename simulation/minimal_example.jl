@@ -72,7 +72,6 @@ function time_evolve()
         𝐦[1, :, :] .= eb[1]
         𝐦[2, :, :] .= eb[2]
         𝐦[3, :, :] .= eb[3]
-        𝐦 .*= 2 * p["snorm"]  # the factor 2 compensates that we sum only once over the boundary lattice pairs
     end
     if occursin("hole", p["lattice"])
         𝐦[3, end, :] *= -1
@@ -187,7 +186,7 @@ function time_evolve()
     T = p["tmax"]
     psiT = tdvp(
         H,
-        T * im,
+        -T * im,
         psi;
         nsteps=p["tdvp_sweeps"],
         maxdim=p["Mtdvp"],
