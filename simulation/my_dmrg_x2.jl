@@ -19,8 +19,8 @@ function permute(
 end
 
 function my_dmrg_x(H::MPO, psi0::MPS, sweeps::Sweeps; kwargs...)
-    check_hascommoninds(siteinds, H, psi0)
-    check_hascommoninds(siteinds, H, psi0')
+    ITensorMPS.check_hascommoninds(siteinds, H, psi0)
+    ITensorMPS.check_hascommoninds(siteinds, H, psi0')
     # Permute the indices to have a better memory layout
     # and minimize permutations
     H = permute(H, (linkind, siteinds, linkind))
@@ -179,7 +179,7 @@ function my_dmrg_x(
         )
     end
 
-    @debug_check begin
+    @ITensorMPS.debug_check begin
         # Debug level checks
         # Enable with ITensors.enable_debug_checks()
         checkflux(psi0)
@@ -218,21 +218,21 @@ function my_dmrg_x(
             end
 
             for (b, ha) in sweepnext(N)
-                @debug_check begin
+                @ITensorMPS.debug_check begin
                     checkflux(psi)
                     checkflux(PH)
                 end
 
-                @timeit_debug timer "dmrg: position!" begin
+                @ITensorMPS.timeit_debug timer "dmrg: position!" begin
                     PH = position!(PH, psi, b)
                 end
 
-                @debug_check begin
+                @ITensorMPS.debug_check begin
                     checkflux(psi)
                     checkflux(PH)
                 end
 
-                @timeit_debug timer "dmrg: psi[b]*psi[b+1]" begin
+                @ITensorMPS.timeit_debug timer "dmrg: psi[b]*psi[b+1]" begin
                     phi = psi[b] * psi[b+1]
                 end
 
@@ -293,7 +293,7 @@ function my_dmrg_x(
 
                 drho = nothing
                 if noise(sweeps, sw) > 0
-                    @timeit_debug timer "dmrg: noiseterm" begin
+                    @ITensorMPS.timeit_debug timer "dmrg: noiseterm" begin
                         # Use noise term when determining new MPS basis.
                         # This is used to preserve the element type of the MPS.
                         elt = real(scalartype(psi))
@@ -301,11 +301,11 @@ function my_dmrg_x(
                     end
                 end
 
-                @debug_check begin
+                @ITensorMPS.debug_check begin
                     checkflux(phi)
                 end
 
-                @timeit_debug timer "dmrg: replacebond!" begin
+                @ITensorMPS.timeit_debug timer "dmrg: replacebond!" begin
                     spec = replacebond!(
                         PH,
                         psi,
@@ -323,7 +323,7 @@ function my_dmrg_x(
                 end
                 maxtruncerr = max(maxtruncerr, spec.truncerr)
 
-                @debug_check begin
+                @ITensorMPS.debug_check begin
                     checkflux(psi)
                     checkflux(PH)
                 end
