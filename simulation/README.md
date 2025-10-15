@@ -23,4 +23,5 @@ The simulation will then initialize a single skyrmion in the center of a $19\tim
 
 After performing the DMRG-x algorithm until convergence, the gradient Zeeman field is applied and TDVP is performed to simulate the time-dependent wave function.
 
-If the script finishes successfully, the output folder contains two-point correlations `corr.csv`, information on the final `energy.csv`, local magnetization profiles `lobs.csv`, the energy drift during the TDVP evolution in `series_energy.csv`, and the time series of the magnetization profile in `series_lobs.csv`.
+If the script finishes successfully, the output folder contains the following files associated with the results of the DMRG-x simulation: two-point correlations in `corr.csv`, information on the final energy in `energy.csv` and local magnetization profiles in `lobs.csv`.
+Associated with the TDVP simulations, the energy drift during the evolution is presented in `series_energy.csv`, and the time series of the magnetization profile in `series_lobs.csv`.
