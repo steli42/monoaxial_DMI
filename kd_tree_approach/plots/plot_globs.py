@@ -47,7 +47,16 @@ for alpha,group in data_all.groupby("alpha"):
 plt.xlabel("1/M")
 plt.ylabel("sigma^2")
 plt.grid(True)
-plt.savefig("trend.png",dpi=600)
+plt.savefig("spread.png",dpi=600)
+
+plt.figure()
+for M,group in data_all.groupby("M"):
+    # plt.plot(group["alpha"],group["Ec"],label=f"M = {M}", marker='x')
+    plt.plot(group["alpha"],group["E"],label=f"M = {M}", marker='o')
+plt.xlabel("alpha")
+plt.ylabel("E")
+plt.grid(True)
+plt.savefig("trendK1.png",dpi=600)
 
 
 
