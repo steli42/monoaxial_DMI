@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from matplotlib.gridspec import GridSpec
 
@@ -22,6 +23,8 @@ def plot_texture():
     msize = 3
     w_total = 5.2
     h_total = 2.5
+    lw = mpl.rcParams["axes.linewidth"]
+
     D = 2 * np.pi / 15.0
     B_D = D**2/ 2.0 
     
@@ -31,6 +34,7 @@ def plot_texture():
         df["alpha"],
         df["B_sp_FM"],
         color="black",
+        linewidth=lw,
         marker="o",
         markerfacecolor="white",
         markeredgecolor="black",
@@ -49,6 +53,7 @@ def plot_texture():
         df["alpha2"],
         df["B_sk_sp"],
         color="black",
+        linewidth=lw,
         marker="o",
         markerfacecolor="white",
         markeredgecolor="black",
@@ -65,6 +70,7 @@ def plot_texture():
         df["alpha"],
         df["B_sk_DM"],
         color="black",
+        linewidth=lw,
         marker="o",
         markerfacecolor="white",
         markeredgecolor="black",
@@ -73,9 +79,9 @@ def plot_texture():
     )
 
     axs[0].text(
-        0.39,
+        0.29,
         0.85,
-        r"$\mathrm{FM}$",
+        r"$\mathrm{Ferromagnet}$",
         fontsize=font+2,
         color="black",
         ha="left",
@@ -118,11 +124,11 @@ def plot_texture():
     
     # second panel 
     
-    axs[1].plot(-J0[1]/B_D, J0[2], label=r"$0$")
-    axs[1].plot(-J2[1]/B_D, J2[2], label=r"$0.2$")
-    axs[1].plot(-J4[1]/B_D, J4[2], label=r"$0.4$")
-    axs[1].plot(-J6[1]/B_D, J6[2], label=r"$0.6$")
-    axs[1].plot(-J8[1]/B_D, J8[2], label=r"$0.8$")
+    axs[1].plot(-J0[1]/B_D, J0[2], linewidth=lw, label=r"$0$")
+    axs[1].plot(-J2[1]/B_D, J2[2], linewidth=lw, label=r"$0.2$")
+    axs[1].plot(-J4[1]/B_D, J4[2], linewidth=lw, label=r"$0.4$")
+    axs[1].plot(-J6[1]/B_D, J6[2], linewidth=lw, label=r"$0.6$")
+    axs[1].plot(-J8[1]/B_D, J8[2], linewidth=lw, label=r"$0.8$")
 
     axs[1].set_xlabel(r"$\mathrm{Magnetic~field}, ~ \vert B_z/B_D \vert$", fontsize=font)
     axs[1].set_ylabel(r"$\mathrm{Magnetization}, ~ M_z$", fontsize=font)

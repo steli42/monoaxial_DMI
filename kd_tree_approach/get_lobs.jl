@@ -58,7 +58,8 @@ let
   base_dir = "."
   target_dir = "data_lobs"
   config = "config_local.json"
-  state = "1_0_state.h5"
+  state = "0_0_state_5.h5"
+  op_fn = "lobs.csv"
 
   mkpath(joinpath("..", target_dir))
   config_path = joinpath(base_dir, config)
@@ -87,8 +88,8 @@ let
     s=s,
     Delta=Δ
   )
-  CSV.write(joinpath("..", target_dir, "lobs.csv"), data)
-  println("Data for c=$c saved to lobs.csv")
+  CSV.write(joinpath("..", target_dir, op_fn), data)
+  println("Data for c=$c saved to $(op_fn)")
 
   fig = plt.figure()
   ax = fig.add_subplot(projection="3d")
